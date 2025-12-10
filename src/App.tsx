@@ -44,14 +44,7 @@ function AppContent() {
       <Routes>
         <Route
           path="/"
-          element={
-            <HomePage
-              products={products}
-              categories={categories}
-              onAddToCart={addToCart}
-              onViewDetails={setSelectedProduct}
-            />
-          }
+          element={<HomePage />}
         />
         <Route
           path="/categories"
