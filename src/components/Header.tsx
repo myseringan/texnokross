@@ -1,5 +1,5 @@
 import { ShoppingCart, Zap, ArrowRight, Globe, Menu, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -11,6 +11,8 @@ interface HeaderProps {
 export function Header({ cartItemCount, onCartClick }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const isHomePage = location.pathname === '/';
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-gradient-to-r from-blue-950/90 via-blue-900/80 to-blue-950/90 border-b border-white/10 shadow-2xl">
@@ -74,19 +76,21 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
               </div>
             </Link>
 
-            {/* Cart Button */}
-            <button onClick={onCartClick} className="relative group">
-              <div className="relative backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl px-6 py-3 transition-all duration-300 shadow-xl transform hover:scale-105">
-                <div className="flex items-center space-x-3">
-                  <ShoppingCart className="w-6 h-6 text-white" strokeWidth={2} />
-                  {cartItemCount > 0 && (
-                    <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">
-                      {cartItemCount}
-                    </span>
-                  )}
+            {/* Cart Button - Hidden on Home Page */}
+            {!isHomePage && (
+              <button onClick={onCartClick} className="relative group">
+                <div className="relative backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl px-6 py-3 transition-all duration-300 shadow-xl transform hover:scale-105">
+                  <div className="flex items-center space-x-3">
+                    <ShoppingCart className="w-6 h-6 text-white" strokeWidth={2} />
+                    {cartItemCount > 0 && (
+                      <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">
+                        {cartItemCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            )}
           </div>
 
           {/* Mobile Navigation */}
@@ -116,18 +120,20 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
               </button>
             </div>
 
-            {/* Cart Button Mobile */}
-            <button
-              onClick={onCartClick}
-              className="relative backdrop-blur-xl bg-white/10 border border-white/20 rounded-lg p-2"
-            >
-              <ShoppingCart className="w-5 h-5 text-white" strokeWidth={2} />
-              {cartItemCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
-                  {cartItemCount}
-                </span>
-              )}
-            </button>
+            {/* Cart Button Mobile - Hidden on Home Page */}
+            {!isHomePage && (
+              <button
+                onClick={onCartClick}
+                className="relative backdrop-blur-xl bg-white/10 border border-white/20 rounded-lg p-2"
+              >
+                <ShoppingCart className="w-5 h-5 text-white" strokeWidth={2} />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Menu Button Mobile */}
             <button
