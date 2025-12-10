@@ -53,7 +53,7 @@ export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCard
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="text-3xl font-bold bg-gradient-to-r from-blue-300 to-blue-100 bg-clip-text text-transparent">
-                {product.price.toLocaleString('ru-RU')} ₽
+                {product.price.toLocaleString('ru-RU')} сўм
               </div>
             </div>
           </div>

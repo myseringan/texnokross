@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Header } from './components/Header';
-import { Hero } from './components/Hero';
-import { ProductGrid } from './components/ProductGrid';
+import { HomePage } from './pages/HomePage';
+import { CategoriesPage } from './pages/CategoriesPage';
 import { Cart } from './components/Cart';
 import { ProductDetail } from './components/ProductDetail';
 import { useProducts } from './hooks/useProducts';
@@ -35,43 +36,53 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
-      <Header cartItemCount={itemCount} onCartClick={() => setIsCartOpen(true)} />
+    <Router>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
+        <Header cartItemCount={itemCount} onCartClick={() => setIsCartOpen(true)} />
 
-      <div className="pt-20">
-        <Hero />
-        <ProductGrid
-          products={products}
-          categories={categories}
-          onAddToCart={addToCart}
-          onViewDetails={setSelectedProduct}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <HomePage
+                products={products}
+                categories={categories}
+                onAddToCart={addToCart}
+                onViewDetails={setSelectedProduct}
+              />
+            }
+          />
+          <Route
+            path="/categories"
+            element={<CategoriesPage categories={categories} />}
+          />
+        </Routes>
+
+        <Cart
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          cartItems={cartItems}
+          onUpdateQuantity={updateQuantity}
+          onRemoveItem={removeFromCart}
+          total={total}
         />
+
+        <ProductDetail
+          product={selectedProduct}
+          isOpen={selectedProduct !== null}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={addToCart}
+        />
+
+        <footer className="bg-gradient-to-r from-blue-950/80 via-blue-900/70 to-blue-950/80 backdrop-blur-xl border-t border-white/10 py-8 mt-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p className="text-blue-200/80">
+              © 2024 Texnokross. Все права защищены.
+            </p>
+          </div>
+        </footer>
       </div>
-
-      <Cart
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onUpdateQuantity={updateQuantity}
-        onRemoveItem={removeFromCart}
-        total={total}
-      />
-
-      <ProductDetail
-        product={selectedProduct}
-        isOpen={selectedProduct !== null}
-        onClose={() => setSelectedProduct(null)}
-        onAddToCart={addToCart}
-      />
-
-      <footer className="bg-gradient-to-r from-blue-950/80 via-blue-900/70 to-blue-950/80 backdrop-blur-xl border-t border-white/10 py-8 mt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-blue-200/80">
-            © 2024 Texnokross. Все права защищены.
-          </p>
-        </div>
-      </footer>
-    </div>
+    </Router>
   );
 }
 

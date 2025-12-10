@@ -2,10 +2,24 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { CartItem, Product } from '../types';
 
+function generateUUID(): string {
+  // Use crypto.randomUUID if available, otherwise fallback to a polyfill
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  
+  // Fallback for browsers that don't support crypto.randomUUID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 function getSessionId(): string {
   let sessionId = sessionStorage.getItem('cart_session_id');
   if (!sessionId) {
-    sessionId = crypto.randomUUID();
+    sessionId = generateUUID();
     sessionStorage.setItem('cart_session_id', sessionId);
   }
   return sessionId;
@@ -41,13 +55,13 @@ export function useCart() {
     const existingItem = cartItems.find(item => item.product_id === productId);
 
     if (existingItem) {
-      await supabase
-        .from('cart_items')
+      await (supabase
+        .from('cart_items') as any) // eslint-disable-line @typescript-eslint/no-explicit-any
         .update({ quantity: existingItem.quantity + 1 })
         .eq('id', existingItem.id);
     } else {
-      await supabase
-        .from('cart_items')
+      await (supabase
+        .from('cart_items') as any) // eslint-disable-line @typescript-eslint/no-explicit-any
         .insert({ session_id: sessionId, product_id: productId, quantity: 1 });
     }
 
@@ -60,8 +74,8 @@ export function useCart() {
       return;
     }
 
-    await supabase
-      .from('cart_items')
+    await (supabase
+      .from('cart_items') as any) // eslint-disable-line @typescript-eslint/no-explicit-any
       .update({ quantity })
       .eq('id', itemId);
 

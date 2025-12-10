@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProductCard } from './ProductCard';
 import type { Product, Category } from '../types';
 
@@ -7,10 +7,17 @@ interface ProductGridProps {
   categories: Category[];
   onAddToCart: (productId: string) => void;
   onViewDetails: (product: Product) => void;
+  initialCategory?: string | null;
 }
 
-export function ProductGrid({ products, categories, onAddToCart, onViewDetails }: ProductGridProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+export function ProductGrid({ products, categories, onAddToCart, onViewDetails, initialCategory }: ProductGridProps) {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory || null);
+
+  useEffect(() => {
+    if (initialCategory) {
+      setSelectedCategory(initialCategory);
+    }
+  }, [initialCategory]);
 
   const filteredProducts = selectedCategory
     ? products.filter(p => p.category_id === selectedCategory)
@@ -28,10 +35,10 @@ export function ProductGrid({ products, categories, onAddToCart, onViewDetails }
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
+        <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-12 px-2">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`backdrop-blur-xl border border-white/20 px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg ${
+            className={`backdrop-blur-xl border border-white/20 px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-medium transition-all duration-300 transform hover:scale-105 shadow-lg ${
               selectedCategory === null
                 ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-blue-500/50'
                 : 'bg-white/10 text-blue-100 hover:bg-white/20'
@@ -44,7 +51,7 @@ export function ProductGrid({ products, categories, onAddToCart, onViewDetails }
             <button
               key={category.id}
               onClick={() => setSelectedCategory(category.id)}
-              className={`backdrop-blur-xl border border-white/20 px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 shadow-lg ${
+              className={`backdrop-blur-xl border border-white/20 px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-medium transition-all duration-300 transform hover:scale-105 shadow-lg ${
                 selectedCategory === category.id
                   ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-blue-500/50'
                   : 'bg-white/10 text-blue-100 hover:bg-white/20'
