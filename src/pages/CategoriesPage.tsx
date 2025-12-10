@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import type { Category } from '../types';
 
 interface CategoriesPageProps {
@@ -8,15 +9,25 @@ interface CategoriesPageProps {
 
 export function CategoriesPage({ categories }: CategoriesPageProps) {
   const { t } = useLanguage();
+  const { isDark } = useTheme();
+  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 pt-14 sm:pt-20">
+    <div className={`min-h-screen pt-14 sm:pt-20 transition-colors duration-300 ${
+      isDark 
+        ? 'bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900' 
+        : 'bg-gradient-to-br from-blue-100 via-white to-blue-50'
+    }`}>
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-20">
         {/* Header */}
         <div className="text-center mb-8 sm:mb-16">
-          <h1 className="text-2xl sm:text-5xl md:text-6xl font-bold mb-2 sm:mb-4 bg-gradient-to-r from-blue-100 via-white to-blue-100 bg-clip-text text-transparent">
+          <h1 className={`text-2xl sm:text-5xl md:text-6xl font-bold mb-2 sm:mb-4 bg-clip-text text-transparent ${
+            isDark 
+              ? 'bg-gradient-to-r from-blue-100 via-white to-blue-100' 
+              : 'bg-gradient-to-r from-blue-700 via-blue-900 to-blue-700'
+          }`}>
             {t.categoriesPage.title}
           </h1>
-          <p className="text-blue-200/80 text-sm sm:text-lg px-4">
+          <p className={`text-sm sm:text-lg px-4 ${isDark ? 'text-blue-200/80' : 'text-blue-700'}`}>
             {t.categoriesPage.subtitle}
           </p>
         </div>
@@ -29,9 +40,15 @@ export function CategoriesPage({ categories }: CategoriesPageProps) {
               to={`/?category=${category.id}`}
               className="group relative"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-xl sm:rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className={`absolute inset-0 rounded-xl sm:rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
+                isDark ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10' : 'bg-gradient-to-br from-blue-400/40 to-blue-500/30'
+              }`}></div>
               
-              <div className="relative backdrop-blur-xl bg-white/10 border border-white/20 rounded-xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 sm:transform sm:hover:-translate-y-2 active:bg-white/15">
+              <div className={`relative backdrop-blur-xl border rounded-xl sm:rounded-3xl p-4 sm:p-8 shadow-xl transition-all duration-500 sm:transform sm:hover:-translate-y-2 ${
+                isDark 
+                  ? 'bg-white/10 border-white/20 hover:shadow-blue-500/20 active:bg-white/15' 
+                  : 'bg-white border-blue-200 hover:shadow-blue-300/50 active:bg-blue-50 shadow-blue-100'
+              }`}>
                 <div className="flex flex-col items-center text-center">
                   {/* Icon */}
                   <div className="w-12 h-12 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-6 shadow-xl group-hover:scale-110 transition-transform duration-300">
@@ -41,17 +58,23 @@ export function CategoriesPage({ categories }: CategoriesPageProps) {
                   </div>
                   
                   {/* Name */}
-                  <h2 className="text-sm sm:text-2xl font-bold text-white mb-1 sm:mb-2 group-hover:text-blue-300 transition-colors line-clamp-2">
+                  <h2 className={`text-sm sm:text-2xl font-bold mb-1 sm:mb-2 transition-colors line-clamp-2 ${
+                    isDark 
+                      ? 'text-white group-hover:text-blue-300' 
+                      : 'text-blue-900 group-hover:text-blue-600'
+                  }`}>
                     {category.name}
                   </h2>
                   
                   {/* Subtitle - Hidden on mobile */}
-                  <p className="hidden sm:block text-blue-200/70 text-sm mb-4">
+                  <p className={`hidden sm:block text-sm mb-4 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
                     {t.categoriesPage.goToCategory}
                   </p>
                   
                   {/* Arrow */}
-                  <div className="mt-2 sm:mt-4 inline-flex items-center text-blue-300 text-xs sm:text-sm font-medium">
+                  <div className={`mt-2 sm:mt-4 inline-flex items-center text-xs sm:text-sm font-medium ${
+                    isDark ? 'text-blue-300' : 'text-blue-600'
+                  }`}>
                     <span className="hidden sm:inline">{t.categoriesPage.viewProducts}</span>
                     <svg className="w-4 h-4 sm:ml-2 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -67,7 +90,11 @@ export function CategoriesPage({ categories }: CategoriesPageProps) {
         <div className="mt-8 sm:mt-12 text-center">
           <Link
             to="/"
-            className="inline-flex items-center backdrop-blur-xl bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/20 text-white font-semibold px-5 sm:px-8 py-3 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-200 shadow-lg text-sm sm:text-base"
+            className={`inline-flex items-center backdrop-blur-xl border font-semibold px-5 sm:px-8 py-3 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-200 shadow-lg text-sm sm:text-base ${
+              isDark 
+                ? 'bg-white/10 hover:bg-white/20 active:bg-white/30 border-white/20 text-white' 
+                : 'bg-white hover:bg-blue-50 active:bg-blue-100 border-blue-300 text-blue-700'
+            }`}
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
