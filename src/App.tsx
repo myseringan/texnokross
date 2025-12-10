@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Instagram, Phone, Send } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { Header } from './components/Header';
@@ -89,12 +90,58 @@ function AppContent() {
       <footer className={`backdrop-blur-xl border-t py-6 sm:py-8 mt-12 sm:mt-20 transition-colors duration-300 ${
         isDark 
           ? 'bg-gradient-to-r from-blue-950/80 via-blue-900/70 to-blue-950/80 border-white/10' 
-          : 'bg-gradient-to-r from-white/80 via-blue-50/70 to-white/80 border-blue-200/50'
+          : 'bg-gradient-to-r from-white via-blue-50/70 to-white border-blue-200'
       }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className={`text-xs sm:text-base ${isDark ? 'text-blue-200/80' : 'text-blue-600/80'}`}>
-            {t.common.copyright}
-          </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Copyright */}
+            <p className={`text-xs sm:text-base ${isDark ? 'text-blue-200/80' : 'text-blue-700'}`}>
+              {t.common.copyright}
+            </p>
+            
+            {/* Social Icons */}
+            <div className="flex items-center gap-3">
+              {/* Instagram */}
+              <a
+                href="https://www.instagram.com/texnokross_uz/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+                  isDark 
+                    ? 'bg-gradient-to-br from-pink-500/20 to-purple-500/20 border border-pink-400/30 hover:from-pink-500/30 hover:to-purple-500/30' 
+                    : 'bg-gradient-to-br from-pink-100 to-purple-100 border border-pink-300 hover:from-pink-200 hover:to-purple-200'
+                }`}
+              >
+                <Instagram className={`w-5 h-5 ${isDark ? 'text-pink-400' : 'text-pink-600'}`} />
+              </a>
+
+              {/* Telegram */}
+              <a
+                href="https://t.me/t_Texnokross_navai_uz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+                  isDark 
+                    ? 'bg-gradient-to-br from-sky-500/20 to-blue-500/20 border border-sky-400/30 hover:from-sky-500/30 hover:to-blue-500/30' 
+                    : 'bg-gradient-to-br from-sky-100 to-blue-100 border border-sky-300 hover:from-sky-200 hover:to-blue-200'
+                }`}
+              >
+                <Send className={`w-5 h-5 ${isDark ? 'text-sky-400' : 'text-sky-600'}`} />
+              </a>
+
+              {/* Phone */}
+              <a
+                href="tel:+998907174447"
+                className={`w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+                  isDark 
+                    ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 hover:from-green-500/30 hover:to-emerald-500/30' 
+                    : 'bg-gradient-to-br from-green-100 to-emerald-100 border border-green-300 hover:from-green-200 hover:to-emerald-200'
+                }`}
+              >
+                <Phone className={`w-5 h-5 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
