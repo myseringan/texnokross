@@ -11,7 +11,7 @@ import { ProductDetail } from './components/ProductDetail';
 import { useProducts } from './hooks/useProducts';
 import { useCart } from './hooks/useCart';
 import type { Product } from './types';
-import { AuthProvider } from './contexts/AuthContext'; // ДОБАВЛЕНО: Импорт AuthProvider
+import { LoginPage } from './pages/LoginPage'; // Добавлен импорт LoginPage
 
 function AppContent() {
   const { products, categories, loading: productsLoading } = useProducts();
@@ -62,10 +62,7 @@ function AppContent() {
       <Header cartItemCount={itemCount} onCartClick={() => setIsCartOpen(true)} />
 
       <Routes>
-        <Route
-          path="/"
-          element={<HomePage />}
-        />
+        <Route path="/" element={<HomePage />} />
         <Route
           path="/categories"
           element={
@@ -77,6 +74,7 @@ function AppContent() {
             />
           }
         />
+        <Route path="/login" element={<LoginPage />} /> {/* Добавлен маршрут /login */}
       </Routes>
 
       <Cart
@@ -161,9 +159,7 @@ function App() {
     <Router>
       <LanguageProvider>
         <ThemeProvider>
-          <AuthProvider> {/* ДОБАВЛЕНО: Обертка AuthProvider */}
-            <AppContent />
-          </AuthProvider>
+          <AppContent />
         </ThemeProvider>
       </LanguageProvider>
     </Router>
