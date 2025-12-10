@@ -11,7 +11,8 @@ import { ProductDetail } from './components/ProductDetail';
 import { useProducts } from './hooks/useProducts';
 import { useCart } from './hooks/useCart';
 import type { Product } from './types';
-import { LoginPage } from './pages/LoginPage'; // Добавлен импорт LoginPage
+import { LoginPage } from './pages/LoginPage'; // Импорт LoginPage
+import { AuthProvider } from './contexts/AuthContext'; // Импорт AuthProvider (путь укажи свой, если нужно)
 
 function AppContent() {
   const { products, categories, loading: productsLoading } = useProducts();
@@ -159,7 +160,9 @@ function App() {
     <Router>
       <LanguageProvider>
         <ThemeProvider>
-          <AppContent />
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
         </ThemeProvider>
       </LanguageProvider>
     </Router>
