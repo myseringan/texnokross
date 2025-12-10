@@ -11,6 +11,7 @@ import { ProductDetail } from './components/ProductDetail';
 import { useProducts } from './hooks/useProducts';
 import { useCart } from './hooks/useCart';
 import type { Product } from './types';
+import { AuthProvider } from './contexts/AuthContext'; // ДОБАВЛЕНО: Импорт AuthProvider
 
 function AppContent() {
   const { products, categories, loading: productsLoading } = useProducts();
@@ -160,7 +161,9 @@ function App() {
     <Router>
       <LanguageProvider>
         <ThemeProvider>
-          <AppContent />
+          <AuthProvider> {/* ДОБАВЛЕНО: Обертка AuthProvider */}
+            <AppContent />
+          </AuthProvider>
         </ThemeProvider>
       </LanguageProvider>
     </Router>
