@@ -67,7 +67,14 @@ function AppContent() {
         />
         <Route
           path="/categories"
-          element={<CategoriesPage categories={categories} />}
+          element={
+            <CategoriesPage 
+              categories={categories} 
+              products={products}
+              onAddToCart={addToCart}
+              onViewDetails={setSelectedProduct}
+            />
+          }
         />
       </Routes>
 
