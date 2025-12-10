@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { Category } from '../types';
 
 interface CategoriesPageProps {
@@ -6,15 +7,16 @@ interface CategoriesPageProps {
 }
 
 export function CategoriesPage({ categories }: CategoriesPageProps) {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center mb-16">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-blue-100 via-white to-blue-100 bg-clip-text text-transparent">
-            Категории товаров
+            {t.categoriesPage.title}
           </h1>
           <p className="text-blue-200/80 text-lg">
-            Выберите категорию для просмотра товаров
+            {t.categoriesPage.subtitle}
           </p>
         </div>
 
@@ -40,11 +42,11 @@ export function CategoriesPage({ categories }: CategoriesPageProps) {
                   </h2>
                   
                   <p className="text-blue-200/70 text-sm mb-4">
-                    Перейти в категорию
+                    {t.categoriesPage.goToCategory}
                   </p>
                   
                   <div className="mt-4 inline-flex items-center text-blue-300 text-sm font-medium">
-                    Смотреть товары
+                    {t.categoriesPage.viewProducts}
                     <svg className="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
@@ -63,7 +65,7 @@ export function CategoriesPage({ categories }: CategoriesPageProps) {
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Вернуться на главную
+            {t.categoriesPage.backToHome}
           </Link>
         </div>
       </div>

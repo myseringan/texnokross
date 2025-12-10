@@ -1,4 +1,5 @@
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { CartItem, Product } from '../types';
 
 interface CartProps {
@@ -11,6 +12,8 @@ interface CartProps {
 }
 
 export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, total }: CartProps) {
+  const { t } = useLanguage();
+  
   if (!isOpen) return null;
 
   return (
@@ -25,8 +28,8 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                 <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">Корзина</h2>
-                <p className="text-blue-200/70 text-xs sm:text-sm">{cartItems.length} товаров</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">{t.cart.cart}</h2>
+                <p className="text-blue-200/70 text-xs sm:text-sm">{cartItems.length} {t.cart.items}</p>
               </div>
             </div>
             <button
@@ -43,8 +46,8 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                 <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-full p-6 sm:p-8 mb-4 sm:mb-6">
                   <ShoppingBag className="w-12 h-12 sm:w-16 sm:h-16 text-blue-300/50" />
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">Корзина пуста</h3>
-                <p className="text-sm sm:text-base text-blue-200/60">Добавьте товары из каталога</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">{t.cart.emptyCart}</h3>
+                <p className="text-sm sm:text-base text-blue-200/60">{t.cart.addFromCatalog}</p>
               </div>
             ) : (
               cartItems.map(item => (
@@ -99,14 +102,14 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
           {cartItems.length > 0 && (
             <div className="border-t border-white/10 p-4 sm:p-6 space-y-4">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-blue-200 text-base sm:text-lg">Итого:</span>
+                <span className="text-blue-200 text-base sm:text-lg">{t.cart.total}</span>
                 <span className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-300 to-blue-100 bg-clip-text text-transparent">
                   {total.toLocaleString('uz-UZ')} UZS
                 </span>
               </div>
 
               <button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 sm:py-4 rounded-2xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 text-sm sm:text-base">
-                Оформить заказ
+                {t.cart.checkout}
               </button>
             </div>
           )}

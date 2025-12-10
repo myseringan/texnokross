@@ -1,5 +1,6 @@
-import { ShoppingCart, Zap, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Zap, ArrowRight, Globe } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface HeaderProps {
   cartItemCount: number;
@@ -7,6 +8,7 @@ interface HeaderProps {
 }
 
 export function Header({ cartItemCount, onCartClick }: HeaderProps) {
+  const { language, setLanguage, t } = useLanguage();
   return (
     <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-gradient-to-r from-blue-950/80 via-blue-900/70 to-blue-950/80 border-b border-white/10 shadow-2xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,11 +24,41 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
               <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-blue-100 via-white to-blue-100 bg-clip-text text-transparent drop-shadow-lg">
                 Texnokross
               </h1>
-              <p className="hidden sm:block text-xs text-blue-200/80 tracking-wider">Бытовая техника премиум класса</p>
+              <p className="hidden sm:block text-xs text-blue-200/80 tracking-wider">{t.header.subtitle}</p>
             </div>
           </Link>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-blue-500 blur-xl opacity-0 group-hover:opacity-50 transition-opacity rounded-full"></div>
+              <div className="relative backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-300 shadow-xl hover:shadow-2xl">
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-white" strokeWidth={2} />
+                  <button
+                    onClick={() => setLanguage('uz')}
+                    className={`px-2 py-1 text-xs sm:text-sm font-medium rounded transition-colors ${
+                      language === 'uz'
+                        ? 'text-blue-300 bg-blue-500/20'
+                        : 'text-white/70 hover:text-white'
+                    }`}
+                  >
+                    UZ
+                  </button>
+                  <span className="text-white/30">|</span>
+                  <button
+                    onClick={() => setLanguage('ru')}
+                    className={`px-2 py-1 text-xs sm:text-sm font-medium rounded transition-colors ${
+                      language === 'ru'
+                        ? 'text-blue-300 bg-blue-500/20'
+                        : 'text-white/70 hover:text-white'
+                    }`}
+                  >
+                    RU
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <Link
               to="/categories"
               className="relative group"
@@ -34,7 +66,7 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
               <div className="absolute inset-0 bg-blue-500 blur-xl opacity-0 group-hover:opacity-50 transition-opacity rounded-full"></div>
               <div className="relative backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl sm:rounded-2xl px-3 sm:px-6 py-2 sm:py-3 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105">
                 <div className="flex items-center space-x-2">
-                  <span className="text-white font-medium">В Магазин</span>
+                  <span className="text-white font-medium">{t.header.toShop}</span>
                   <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-white" strokeWidth={2} />
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { ShoppingCart, Check } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { Product } from '../types';
 
 interface ProductCardProps {
@@ -10,6 +11,7 @@ interface ProductCardProps {
 export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCardProps) {
   const specs = product.specifications as Record<string, string>;
   const specEntries = Object.entries(specs).slice(0, 3);
+  const { t } = useLanguage();
 
   return (
     <div className="group relative">
@@ -27,7 +29,7 @@ export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCard
           {product.in_stock && (
             <div className="absolute top-4 right-4 backdrop-blur-xl bg-green-500/90 border border-green-400/30 text-white text-xs font-semibold px-4 py-2 rounded-full flex items-center space-x-1 shadow-xl">
               <Check className="w-4 h-4" />
-              <span>В наличии</span>
+              <span>{t.productCard.inStock}</span>
             </div>
           )}
         </div>
@@ -63,7 +65,7 @@ export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCard
               onClick={() => onViewDetails(product)}
               className="flex-1 backdrop-blur-xl bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semibold py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
-              Подробнее
+              {t.productCard.details}
             </button>
 
             <button

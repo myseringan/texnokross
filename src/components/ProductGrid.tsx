@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ProductCard } from './ProductCard';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { Product, Category } from '../types';
 
 interface ProductGridProps {
@@ -12,6 +13,7 @@ interface ProductGridProps {
 
 export function ProductGrid({ products, categories, onAddToCart, onViewDetails, initialCategory }: ProductGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory || null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (initialCategory) {
@@ -28,10 +30,10 @@ export function ProductGrid({ products, categories, onAddToCart, onViewDetails, 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-100 via-white to-blue-100 bg-clip-text text-transparent">
-            Наш каталог
+            {t.productGrid.ourCatalog}
           </h2>
           <p className="text-blue-200/80 text-lg">
-            Выберите идеальную технику для вашего дома
+            {t.productGrid.chooseIdealTech}
           </p>
         </div>
 
@@ -44,7 +46,7 @@ export function ProductGrid({ products, categories, onAddToCart, onViewDetails, 
                 : 'bg-white/10 text-blue-100 hover:bg-white/20'
             }`}
           >
-            Все категории
+            {t.productGrid.allCategories}
           </button>
 
           {categories.map(category => (
@@ -76,7 +78,7 @@ export function ProductGrid({ products, categories, onAddToCart, onViewDetails, 
         {filteredProducts.length === 0 && (
           <div className="text-center py-20">
             <p className="text-blue-200/60 text-lg">
-              В этой категории пока нет товаров
+              {t.productGrid.noProducts}
             </p>
           </div>
         )}
