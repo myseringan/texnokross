@@ -1,4 +1,4 @@
-import { Sparkles, TrendingUp, Award, Instagram, Phone, Send } from 'lucide-react';
+import { Sparkles, TrendingUp, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -88,61 +88,10 @@ export function Hero() {
 
           <Link
             to="/categories"
-            className="inline-block bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 text-white font-semibold px-6 sm:px-12 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 active:scale-95 text-sm sm:text-base mb-6 sm:mb-10"
+            className="inline-block bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 text-white font-semibold px-6 sm:px-12 py-3 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 active:scale-95 text-sm sm:text-base"
           >
             {t.hero.viewCatalog}
           </Link>
-
-          {/* Social Links */}
-          <div className={`pt-6 sm:pt-8 border-t ${isDark ? 'border-white/10' : 'border-blue-200/50'}`}>
-            <p className={`text-xs sm:text-sm mb-4 ${isDark ? 'text-blue-200/70' : 'text-blue-600/70'}`}>
-              {t.hero.contactUs || "Biz bilan bog'laning"}
-            </p>
-            <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-              {/* Instagram */}
-              <a
-                href="https://www.instagram.com/texnokross_uz/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex items-center gap-2 backdrop-blur-xl border rounded-xl px-4 py-2.5 sm:px-5 sm:py-3 transition-all duration-300 shadow-lg hover:scale-105 active:scale-95 ${
-                  isDark 
-                    ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 border-pink-400/30 hover:from-pink-500/30 hover:to-purple-500/30' 
-                    : 'bg-gradient-to-r from-pink-100 to-purple-100 border-pink-300/50 hover:from-pink-200 hover:to-purple-200'
-                }`}
-              >
-                <Instagram className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-pink-400' : 'text-pink-600'}`} />
-                <span className={`text-xs sm:text-sm font-medium ${isDark ? 'text-pink-200' : 'text-pink-700'}`}>Instagram</span>
-              </a>
-
-              {/* Telegram */}
-              <a
-                href="https://t.me/t_Texnokross_navai_uz"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex items-center gap-2 backdrop-blur-xl border rounded-xl px-4 py-2.5 sm:px-5 sm:py-3 transition-all duration-300 shadow-lg hover:scale-105 active:scale-95 ${
-                  isDark 
-                    ? 'bg-gradient-to-r from-sky-500/20 to-blue-500/20 border-sky-400/30 hover:from-sky-500/30 hover:to-blue-500/30' 
-                    : 'bg-gradient-to-r from-sky-100 to-blue-100 border-sky-300/50 hover:from-sky-200 hover:to-blue-200'
-                }`}
-              >
-                <Send className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-sky-400' : 'text-sky-600'}`} />
-                <span className={`text-xs sm:text-sm font-medium ${isDark ? 'text-sky-200' : 'text-sky-700'}`}>Telegram</span>
-              </a>
-
-              {/* Phone */}
-              <a
-                href="tel:+998907174447"
-                className={`flex items-center gap-2 backdrop-blur-xl border rounded-xl px-4 py-2.5 sm:px-5 sm:py-3 transition-all duration-300 shadow-lg hover:scale-105 active:scale-95 ${
-                  isDark 
-                    ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30 hover:from-green-500/30 hover:to-emerald-500/30' 
-                    : 'bg-gradient-to-r from-green-100 to-emerald-100 border-green-300/50 hover:from-green-200 hover:to-emerald-200'
-                }`}
-              >
-                <Phone className={`w-5 h-5 sm:w-6 sm:h-6 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
-                <span className={`text-xs sm:text-sm font-medium ${isDark ? 'text-green-200' : 'text-green-700'}`}>+99890-717-44-47</span>
-              </a>
-            </div>
-          </div>
         </div>
       </div>
     </div>
