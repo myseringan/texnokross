@@ -60,7 +60,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                         {item.product.name}
                       </h3>
                       <p className="text-blue-100 font-bold mb-2 sm:mb-3 text-sm sm:text-base">
-                        {item.product.price.toLocaleString('ru-RU')} сўм
+                        {item.product.price.toLocaleString('uz-UZ')} UZS
                       </p>
 
                       <div className="flex items-center justify-between">
@@ -101,7 +101,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
               <div className="flex justify-between items-center mb-4">
                 <span className="text-blue-200 text-base sm:text-lg">Итого:</span>
                 <span className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-300 to-blue-100 bg-clip-text text-transparent">
-                  {total.toLocaleString('ru-RU')} сўм
+                  {total.toLocaleString('uz-UZ')} UZS
                 </span>
               </div>
 
