@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ShoppingCart, Check } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { BannerSlider } from '../components/BannerSlider';
 import type { Category, Product } from '../types';
 
 interface CategoriesPageProps {
@@ -161,7 +162,10 @@ export function CategoriesPage({ categories, products, onAddToCart, onViewDetail
         ? 'bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900' 
         : 'bg-gradient-to-br from-blue-100 via-white to-blue-50'
     }`}>
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-20">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-12">
+        {/* Banner Slider */}
+        <BannerSlider isDark={isDark} />
+
         {/* Header */}
         <div className="text-center mb-8 sm:mb-16">
           <h1 className={`text-2xl sm:text-5xl md:text-6xl font-bold mb-2 sm:mb-4 bg-clip-text text-transparent ${
