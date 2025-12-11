@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import type { Product, Category } from '../types';
 
@@ -55,6 +56,7 @@ const DEFAULT_CATEGORIES: Category[] = [
 
 export function AdminPage() {
   const { isDark } = useTheme();
+  const { t } = useLanguage();
   const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -285,7 +287,7 @@ export function AdminPage() {
 
   const handleSave = async () => {
     if (!editingProduct.name || !editingProduct.price || !editingProduct.category_id) {
-      showMessage('error', 'Iltimos, barcha majburiy maydonlarni to\'ldiring');
+      showMessage('error', t.admin?.fillRequired || 'Iltimos, barcha majburiy maydonlarni to\'ldiring');
       return;
     }
 
@@ -355,17 +357,17 @@ export function AdminPage() {
         console.log('Supabase sync skipped');
       }
 
-      showMessage('success', isEditing ? 'Mahsulot yangilandi' : 'Mahsulot qo\'shildi');
+      showMessage('success', isEditing ? (t.admin?.productUpdated || 'Mahsulot yangilandi') : (t.admin?.productAdded || 'Mahsulot qo\'shildi'));
       closeModal();
     } catch (err) {
-      showMessage('error', 'Saqlashda xatolik yuz berdi');
+      showMessage('error', t.admin?.saveError || 'Saqlashda xatolik yuz berdi');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (productId: string) => {
-    if (!confirm('Rostdan ham bu mahsulotni o\'chirmoqchimisiz?')) return;
+    if (!confirm(t.admin?.deleteConfirm || 'Rostdan ham bu mahsulotni o\'chirmoqchimisiz?')) return;
 
     try {
       // Добавляем в список удалённых ID
@@ -391,9 +393,9 @@ export function AdminPage() {
         }
       }
 
-      showMessage('success', 'Mahsulot o\'chirildi');
+      showMessage('success', t.admin?.productDeleted || 'Mahsulot o\'chirildi');
     } catch (err) {
-      showMessage('error', 'O\'chirishda xatolik');
+      showMessage('error', t.admin?.saveError || 'O\'chirishda xatolik');
     }
   };
 
@@ -412,9 +414,9 @@ export function AdminPage() {
 
   // Получаем название категории
   const getCategoryName = (categoryId: string | null) => {
-    if (!categoryId) return 'Kategoriyasiz';
+    if (!categoryId) return t.admin?.noCategory || 'Kategoriyasiz';
     const cat = categories.find(c => c.id === categoryId);
-    return cat?.name || 'Noma\'lum';
+    return cat?.name || t.admin?.noCategory || 'Noma\'lum';
   };
 
   if (!isAdmin) return null;
@@ -439,7 +441,7 @@ export function AdminPage() {
               </div>
               <div>
                 <h1 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Boshqaruv Paneli
+                  {t.admin?.title || "Boshqaruv Paneli"}
                 </h1>
                 <p className={`text-xs ${isDark ? 'text-blue-300' : 'text-gray-500'}`}>
                   {user?.name}
@@ -456,7 +458,7 @@ export function AdminPage() {
               }`}
             >
               <LogOut className="w-5 h-5" />
-              <span className="hidden sm:inline">Chiqish</span>
+              <span className="hidden sm:inline">{t.admin?.logout || "Chiqish"}</span>
             </button>
           </div>
         </div>
@@ -486,7 +488,7 @@ export function AdminPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Qidirish..."
+              placeholder={t.admin?.searchProducts || "Qidirish..."}
               className={`w-full pl-10 pr-4 py-2.5 rounded-xl border transition-all duration-200 ${
                 isDark
                   ? 'bg-white/10 border-white/20 text-white placeholder-blue-300/50'
@@ -511,8 +513,8 @@ export function AdminPage() {
             >
               <span className="truncate">
                 {filterCategory 
-                  ? categories.find(c => c.id === filterCategory)?.name || 'Kategoriya'
-                  : 'Barcha kategoriyalar'}
+                  ? categories.find(c => c.id === filterCategory)?.name || (t.admin?.selectCategory || 'Kategoriya')
+                  : (t.admin?.allCategories || 'Barcha kategoriyalar')}
               </span>
               <ChevronDown className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-blue-300' : 'text-gray-400'}`} />
             </button>
@@ -588,7 +590,7 @@ export function AdminPage() {
             className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium px-4 py-2.5 rounded-xl shadow-lg hover:shadow-blue-500/30 transition-all duration-200"
           >
             <Plus className="w-5 h-5" />
-            <span>Qo'shish</span>
+            <span>{t.common?.add || "Qo'shish"}</span>
           </button>
         </div>
 
@@ -605,7 +607,7 @@ export function AdminPage() {
           }`}>
             <Package className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-blue-300/50' : 'text-gray-300'}`} />
             <p className={`text-lg ${isDark ? 'text-blue-200/60' : 'text-gray-500'}`}>
-              Mahsulotlar topilmadi
+              {t.admin?.noProductsFound || "Mahsulotlar topilmadi"}
             </p>
           </div>
         ) : viewMode === 'grid' ? (
@@ -644,7 +646,7 @@ export function AdminPage() {
                       ? 'bg-green-500/90 text-white' 
                       : 'bg-red-500/90 text-white'
                   }`}>
-                    {product.in_stock ? 'Mavjud' : 'Tugagan'}
+                    {product.in_stock ? (t.admin?.available || 'Mavjud') : (t.admin?.unavailable || 'Tugagan')}
                   </div>
                 </div>
                 <div className="p-4">
@@ -667,7 +669,7 @@ export function AdminPage() {
                       }`}
                     >
                       <Edit2 className="w-4 h-4" />
-                      <span className="text-sm">Tahrirlash</span>
+                      <span className="text-sm">{t.common?.edit || "Tahrirlash"}</span>
                     </button>
                     <button
                       onClick={() => handleDelete(product.id)}
@@ -725,7 +727,7 @@ export function AdminPage() {
                     ? 'bg-green-500/20 text-green-500' 
                     : 'bg-red-500/20 text-red-500'
                 }`}>
-                  {product.in_stock ? 'Mavjud' : 'Tugagan'}
+                  {product.in_stock ? (t.admin?.available || 'Mavjud') : (t.admin?.unavailable || 'Tugagan')}
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -774,7 +776,7 @@ export function AdminPage() {
                 isDark ? 'border-white/10' : 'border-gray-200'
               }`}>
                 <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {isEditing ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot qo\'shish'}
+                  {isEditing ? (t.admin?.editProduct || 'Mahsulotni tahrirlash') : (t.admin?.addProduct || 'Yangi mahsulot qo\'shish')}
                 </h2>
                 <button
                   onClick={closeModal}
@@ -791,7 +793,7 @@ export function AdminPage() {
                 {/* Image Upload - Multiple */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-gray-700'}`}>
-                    Rasmlar ({editingProduct.images.length}/{MAX_IMAGES})
+                    {t.admin?.images || "Rasmlar"} ({editingProduct.images.length}/{MAX_IMAGES})
                   </label>
                   <input
                     type="file"
@@ -815,7 +817,7 @@ export function AdminPage() {
                           <div className={`absolute top-1 left-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                             isDark ? 'bg-blue-500 text-white' : 'bg-blue-500 text-white'
                           }`}>
-                            Asosiy
+                            {t.admin?.mainImage || "Asosiy"}
                           </div>
                         )}
                         <button
@@ -840,21 +842,21 @@ export function AdminPage() {
                       >
                         <Plus className={`w-8 h-8 mb-1 ${isDark ? 'text-blue-300' : 'text-gray-400'}`} />
                         <p className={`text-xs text-center ${isDark ? 'text-blue-200' : 'text-gray-500'}`}>
-                          Rasm qo'shish
+                          {t.admin?.addImage || "Rasm qo'shish"}
                         </p>
                       </div>
                     )}
                   </div>
                   
                   <p className={`text-xs ${isDark ? 'text-blue-300/60' : 'text-gray-400'}`}>
-                    Birinchi rasm asosiy rasm sifatida ko'rsatiladi. Maksimum {MAX_IMAGES} ta rasm.
+                    {t.admin?.imageHint || `Birinchi rasm asosiy rasm sifatida ko'rsatiladi. Maksimum ${MAX_IMAGES} ta rasm.`}
                   </p>
                 </div>
 
                 {/* Name */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-gray-700'}`}>
-                    Nomi *
+                    {t.admin?.productName || "Nomi"} *
                   </label>
                   <div className="relative">
                     <Tag className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
@@ -864,7 +866,7 @@ export function AdminPage() {
                       type="text"
                       value={editingProduct.name}
                       onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                      placeholder="Mahsulot nomi"
+                      placeholder={t.admin?.productName || "Mahsulot nomi"}
                       className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all ${
                         isDark
                           ? 'bg-white/10 border-white/20 text-white placeholder-blue-300/50'
@@ -1071,7 +1073,7 @@ export function AdminPage() {
                       : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
-                  Bekor qilish
+                  {t.common?.cancel || "Bekor qilish"}
                 </button>
                 <button
                   onClick={handleSave}
@@ -1079,7 +1081,7 @@ export function AdminPage() {
                   className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-3 rounded-xl shadow-lg disabled:opacity-50"
                 >
                   <Save className="w-5 h-5" />
-                  {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+                  {saving ? (t.admin?.saving || 'Saqlanmoqda...') : (t.common?.save || 'Saqlash')}
                 </button>
               </div>
             </div>
