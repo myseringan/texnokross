@@ -13,8 +13,21 @@ interface CategoriesPageProps {
   onViewDetails: (product: Product) => void;
 }
 
+// Хелперы для получения названий на нужном языке
+const getCategoryName = (category: Category, language: string) => {
+  return language === 'ru' && category.name_ru ? category.name_ru : category.name;
+};
+
+const getProductName = (product: Product, language: string) => {
+  return language === 'ru' && product.name_ru ? product.name_ru : product.name;
+};
+
+const getProductDescription = (product: Product, language: string) => {
+  return language === 'ru' && product.description_ru ? product.description_ru : product.description;
+};
+
 export function CategoriesPage({ categories, products, onAddToCart, onViewDetails }: CategoriesPageProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { isDark } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
@@ -51,7 +64,7 @@ export function CategoriesPage({ categories, products, onAddToCart, onViewDetail
                 ? 'bg-gradient-to-r from-blue-100 via-white to-blue-100' 
                 : 'bg-gradient-to-r from-blue-700 via-blue-900 to-blue-700'
             }`}>
-              {selectedCategory.name}
+              {getCategoryName(selectedCategory, language)}
             </h1>
             <p className={`mt-2 text-sm sm:text-base ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
               {filteredProducts.length} {t.categoriesPage.productsCount || "ta mahsulot"}
@@ -78,7 +91,7 @@ export function CategoriesPage({ categories, products, onAddToCart, onViewDetail
                     }`}>
                       <img
                         src={product.image_url}
-                        alt={product.name}
+                        alt={getProductName(product, language)}
                         className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
                       />
                       
@@ -97,13 +110,13 @@ export function CategoriesPage({ categories, products, onAddToCart, onViewDetail
                           ? 'text-white group-hover:text-blue-300' 
                           : 'text-blue-900 group-hover:text-blue-600'
                       }`}>
-                        {product.name}
+                        {getProductName(product, language)}
                       </h3>
 
                       <p className={`text-xs sm:text-sm mb-3 line-clamp-2 ${
                         isDark ? 'text-blue-100/70' : 'text-blue-700'
                       }`}>
-                        {product.description}
+                        {getProductDescription(product, language)}
                       </p>
 
                       {/* Price */}
@@ -211,7 +224,7 @@ export function CategoriesPage({ categories, products, onAddToCart, onViewDetail
                       ? 'text-white group-hover:text-blue-300' 
                       : 'text-blue-900 group-hover:text-blue-600'
                   }`}>
-                    {category.name}
+                    {getCategoryName(category, language)}
                   </h2>
                   
                   {/* Product count */}

@@ -18,24 +18,30 @@ type ViewMode = 'grid' | 'list';
 interface ProductForm {
   id?: string;
   name: string;
+  name_ru: string; // Русское название
   description: string;
+  description_ru: string; // Русское описание
   price: string;
   images: string[]; // Массив фото (до 4 штук)
   category_id: string;
   in_stock: boolean;
   specifications: Record<string, string>;
+  specifications_ru: Record<string, string>; // Русские характеристики
 }
 
 const MAX_IMAGES = 4;
 
 const emptyForm: ProductForm = {
   name: '',
+  name_ru: '',
   description: '',
+  description_ru: '',
   price: '',
   images: [],
   category_id: '',
   in_stock: true,
   specifications: {},
+  specifications_ru: {},
 };
 
 // Локальное хранилище
@@ -48,12 +54,12 @@ const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136
 
 // Дефолтные категории
 const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat_1', name: 'Kir yuvish mashinalari', slug: 'washing-machines', created_at: new Date().toISOString() },
-  { id: 'cat_2', name: 'Muzlatgichlar', slug: 'refrigerators', created_at: new Date().toISOString() },
-  { id: 'cat_3', name: 'Konditsionerlar', slug: 'air-conditioners', created_at: new Date().toISOString() },
-  { id: 'cat_4', name: 'Televizorlar', slug: 'tvs', created_at: new Date().toISOString() },
-  { id: 'cat_5', name: 'Changyutgichlar', slug: 'vacuum-cleaners', created_at: new Date().toISOString() },
-  { id: 'cat_6', name: 'Mikroto\'lqinli pechlar', slug: 'microwaves', created_at: new Date().toISOString() },
+  { id: 'cat_1', name: 'Kir yuvish mashinalari', name_ru: 'Стиральные машины', slug: 'washing-machines', created_at: new Date().toISOString() },
+  { id: 'cat_2', name: 'Muzlatgichlar', name_ru: 'Холодильники', slug: 'refrigerators', created_at: new Date().toISOString() },
+  { id: 'cat_3', name: 'Konditsionerlar', name_ru: 'Кондиционеры', slug: 'air-conditioners', created_at: new Date().toISOString() },
+  { id: 'cat_4', name: 'Televizorlar', name_ru: 'Телевизоры', slug: 'tvs', created_at: new Date().toISOString() },
+  { id: 'cat_5', name: 'Changyutgichlar', name_ru: 'Пылесосы', slug: 'vacuum-cleaners', created_at: new Date().toISOString() },
+  { id: 'cat_6', name: 'Mikroto\'lqinli pechlar', name_ru: 'Микроволновые печи', slug: 'microwaves', created_at: new Date().toISOString() },
 ];
 
 export function AdminPage() {
@@ -210,12 +216,15 @@ export function AdminPage() {
     setEditingProduct({
       id: product.id,
       name: product.name,
+      name_ru: product.name_ru || '',
       description: product.description,
+      description_ru: product.description_ru || '',
       price: product.price.toString(),
       images: images,
       category_id: product.category_id || '',
       in_stock: product.in_stock,
       specifications: product.specifications as Record<string, string> || {},
+      specifications_ru: product.specifications_ru as Record<string, string> || {},
     });
     setIsEditing(true);
     setIsModalOpen(true);
@@ -304,13 +313,16 @@ export function AdminPage() {
       const productData: Product = {
         id: isEditing && editingProduct.id ? editingProduct.id : `local_${Date.now()}`,
         name: editingProduct.name,
+        name_ru: editingProduct.name_ru || editingProduct.name, // Если нет русского - берём узбекский
         description: editingProduct.description,
+        description_ru: editingProduct.description_ru || editingProduct.description,
         price: parseFloat(editingProduct.price),
         image_url: mainImage, // Главное фото для обратной совместимости
         images: images, // Массив всех фото
         category_id: editingProduct.category_id,
         in_stock: editingProduct.in_stock,
         specifications: editingProduct.specifications,
+        specifications_ru: editingProduct.specifications_ru || editingProduct.specifications,
         created_at: new Date().toISOString(),
       };
 
@@ -886,7 +898,7 @@ export function AdminPage() {
                 {/* Name */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-gray-700'}`}>
-                    {t.admin?.productName || "Nomi"} *
+                    {t.admin?.productName || "Nomi"} (UZ) *
                   </label>
                   <div className="relative">
                     <Tag className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
@@ -906,10 +918,33 @@ export function AdminPage() {
                   </div>
                 </div>
 
-                {/* Description */}
+                {/* Name RU */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-gray-700'}`}>
-                    Tavsif
+                    Название (RU)
+                  </label>
+                  <div className="relative">
+                    <Tag className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                      isDark ? 'text-blue-300' : 'text-gray-400'
+                    }`} />
+                    <input
+                      type="text"
+                      value={editingProduct.name_ru}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, name_ru: e.target.value })}
+                      placeholder="Название товара на русском"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all ${
+                        isDark
+                          ? 'bg-white/10 border-white/20 text-white placeholder-blue-300/50'
+                          : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'
+                      } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                    />
+                  </div>
+                </div>
+
+                {/* Description UZ */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-gray-700'}`}>
+                    Tavsif (UZ)
                   </label>
                   <div className="relative">
                     <FileText className={`absolute left-3 top-3 w-5 h-5 ${
@@ -919,7 +954,30 @@ export function AdminPage() {
                       value={editingProduct.description}
                       onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
                       placeholder="Mahsulot haqida"
-                      rows={3}
+                      rows={2}
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all resize-none ${
+                        isDark
+                          ? 'bg-white/10 border-white/20 text-white placeholder-blue-300/50'
+                          : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'
+                      } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                    />
+                  </div>
+                </div>
+
+                {/* Description RU */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-gray-700'}`}>
+                    Описание (RU)
+                  </label>
+                  <div className="relative">
+                    <FileText className={`absolute left-3 top-3 w-5 h-5 ${
+                      isDark ? 'text-blue-300' : 'text-gray-400'
+                    }`} />
+                    <textarea
+                      value={editingProduct.description_ru}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, description_ru: e.target.value })}
+                      placeholder="Описание товара на русском"
+                      rows={2}
                       className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all resize-none ${
                         isDark
                           ? 'bg-white/10 border-white/20 text-white placeholder-blue-300/50'
