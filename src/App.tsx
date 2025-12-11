@@ -3,17 +3,17 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Instagram, Phone, Send } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { Header } from './components/Header';
 import { HomePage } from './pages/HomePage';
 import { CategoriesPage } from './pages/CategoriesPage';
+import { LoginPage } from './pages/LoginPage';
+import { AdminPage } from './pages/AdminPage';
 import { Cart } from './components/Cart';
 import { ProductDetail } from './components/ProductDetail';
 import { useProducts } from './hooks/useProducts';
 import { useCart } from './hooks/useCart';
 import type { Product } from './types';
-import { LoginPage } from './pages/LoginPage'; // Импорт LoginPage
-import { AdminPage } from './pages/AdminPage'; // Импорт AdminPage
-import { AuthProvider } from './contexts/AuthContext'; // Импорт AuthProvider
 
 function AppContent() {
   const { products, categories, loading: productsLoading } = useProducts();
@@ -64,7 +64,10 @@ function AppContent() {
       <Header cartItemCount={itemCount} onCartClick={() => setIsCartOpen(true)} />
 
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/"
+          element={<HomePage />}
+        />
         <Route
           path="/categories"
           element={
@@ -77,7 +80,7 @@ function AppContent() {
           }
         />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin" element={<AdminPage />} /> {/* Добавлен маршрут admin */}
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
 
       <Cart
@@ -108,7 +111,7 @@ function AppContent() {
               {t.common.copyright}
             </p>
             
-            {/* Social Icons */}
+            {/* Social Icons & Phone */}
             <div className="flex items-center gap-3">
               {/* Instagram */}
               <a
@@ -138,16 +141,19 @@ function AppContent() {
                 <Send className={`w-5 h-5 ${isDark ? 'text-sky-400' : 'text-sky-600'}`} />
               </a>
 
-              {/* Phone */}
+              {/* Phone with number */}
               <a
                 href="tel:+998907174447"
-                className={`w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
                   isDark 
                     ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-400/30 hover:from-green-500/30 hover:to-emerald-500/30' 
                     : 'bg-gradient-to-br from-green-100 to-emerald-100 border border-green-300 hover:from-green-200 hover:to-emerald-200'
                 }`}
               >
-                <Phone className={`w-5 h-5 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
+                <Phone className={`w-4 h-4 sm:w-5 sm:h-5 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
+                <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-green-300' : 'text-green-700'}`}>
+                  +998 90 717 44 47
+                </span>
               </a>
             </div>
           </div>
