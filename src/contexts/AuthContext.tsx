@@ -12,20 +12,17 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  adminLogin: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Админ учётные данные (в реальном проекте хранить на сервере!)
-const ADMIN_CREDENTIALS = {
-  username: 'texnokross_admin',
-  password: 'Texno@2025!',
-};
+// Админ номер телефона
+const ADMIN_PHONE = '998907174447';
+const ADMIN_PASSWORD = 'Texno@2025!';
 
-// Хранение пользователей в localStorage (в реальном проекте - база данных)
+// Хранение пользователей в localStorage
 const USERS_STORAGE_KEY = 'texnokross_users';
 const AUTH_STORAGE_KEY = 'texnokross_auth';
 
@@ -68,9 +65,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'Telefon raqami noto\'g\'ri' };
     }
 
+    // Проверяем если это админ номер
+    const isAdminPhone = normalizedPhone === ADMIN_PHONE || 
+                         normalizedPhone === '907174447' ||
+                         normalizedPhone.endsWith('907174447');
+
+    if (isAdminPhone) {
+      // Проверяем пароль админа
+      if (password === ADMIN_PASSWORD) {
+        const adminUser: User = {
+          id: 'admin',
+          phone: ADMIN_PHONE,
+          name: 'Administrator',
+          isAdmin: true,
+        };
+        setUser(adminUser);
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(adminUser));
+        return { success: true };
+      } else {
+        return { success: false, error: 'Parol noto\'g\'ri' };
+      }
+    }
+
+    // Обычный пользователь
     const users = getUsers();
     
-    // Если пользователь существует - проверяем пароль
     if (users[normalizedPhone]) {
       if (users[normalizedPhone].password === password) {
         const loggedUser: User = {
@@ -105,21 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const adminLogin = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      const adminUser: User = {
-        id: 'admin',
-        phone: '',
-        name: 'Administrator',
-        isAdmin: true,
-      };
-      setUser(adminUser);
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(adminUser));
-      return { success: true };
-    }
-    return { success: false, error: 'Login yoki parol noto\'g\'ri' };
-  };
-
   const logout = () => {
     setUser(null);
     localStorage.removeItem(AUTH_STORAGE_KEY);
@@ -132,7 +136,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isAdmin: user?.isAdmin || false,
         login,
-        adminLogin,
         logout,
         loading,
       }}
