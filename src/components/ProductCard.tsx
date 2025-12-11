@@ -10,10 +10,16 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCardProps) {
-  const specs = product.specifications as Record<string, string>;
-  const specEntries = Object.entries(specs).slice(0, 3);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { isDark } = useTheme();
+
+  // Получаем название и описание на нужном языке
+  const displayName = language === 'ru' && product.name_ru ? product.name_ru : product.name;
+  const displayDescription = language === 'ru' && product.description_ru ? product.description_ru : product.description;
+  const specs = language === 'ru' && product.specifications_ru 
+    ? product.specifications_ru as Record<string, string>
+    : product.specifications as Record<string, string>;
+  const specEntries = Object.entries(specs).slice(0, 3);
 
   return (
     <div className="group relative">
@@ -32,7 +38,7 @@ export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCard
         }`}>
           <img
             src={product.images?.[0] || product.image_url}
-            alt={product.name}
+            alt={displayName}
             className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
           />
           <div className={`absolute inset-0 ${
@@ -66,13 +72,13 @@ export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCard
               ? 'text-white group-hover:text-blue-300' 
               : 'text-blue-900 group-hover:text-blue-600'
           }`}>
-            {product.name}
+            {displayName}
           </h3>
 
           <p className={`text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 ${
             isDark ? 'text-blue-100/70' : 'text-blue-700'
           }`}>
-            {product.description}
+            {displayDescription}
           </p>
 
           {/* Specs - Hidden on very small screens */}

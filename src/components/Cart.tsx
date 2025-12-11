@@ -12,8 +12,13 @@ interface CartProps {
   total: number;
 }
 
+// Хелпер для получения названия на нужном языке
+const getProductName = (product: Product, language: string) => {
+  return language === 'ru' && product.name_ru ? product.name_ru : product.name;
+};
+
 export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, total }: CartProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { isDark } = useTheme();
   
   if (!isOpen) return null;
@@ -81,14 +86,14 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   <div className="flex gap-3">
                     <img
                       src={item.product.image_url}
-                      alt={item.product.name}
+                      alt={getProductName(item.product, language)}
                       className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg shadow-lg flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-medium mb-1 line-clamp-2 text-sm leading-tight ${
                         isDark ? 'text-white' : 'text-blue-900'
                       }`}>
-                        {item.product.name}
+                        {getProductName(item.product, language)}
                       </h3>
                       <p className={`font-bold text-sm mb-2 ${isDark ? 'text-blue-100' : 'text-blue-700'}`}>
                         {item.product.price.toLocaleString('uz-UZ')} UZS

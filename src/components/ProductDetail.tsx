@@ -12,13 +12,18 @@ interface ProductDetailProps {
 }
 
 export function ProductDetail({ product, isOpen, onClose, onAddToCart }: ProductDetailProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { isDark } = useTheme();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   
   if (!isOpen || !product) return null;
 
-  const specs = product.specifications as Record<string, string>;
+  // Получаем название и описание на нужном языке
+  const displayName = language === 'ru' && product.name_ru ? product.name_ru : product.name;
+  const displayDescription = language === 'ru' && product.description_ru ? product.description_ru : product.description;
+  const specs = language === 'ru' && product.specifications_ru 
+    ? product.specifications_ru as Record<string, string>
+    : product.specifications as Record<string, string>;
   
   // Получаем массив изображений
   const images = product.images && product.images.length > 0 
@@ -134,7 +139,7 @@ export function ProductDetail({ product, isOpen, onClose, onAddToCart }: Product
                     >
                       <img
                         src={img}
-                        alt={`${product.name} - ${index + 1}`}
+                        alt={`${displayName} - ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
                     </button>
@@ -148,13 +153,13 @@ export function ProductDetail({ product, isOpen, onClose, onAddToCart }: Product
               <h2 className={`text-xl sm:text-3xl font-bold mb-2 sm:mb-4 leading-tight pr-8 sm:pr-0 ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`}>
-                {product.name}
+                {displayName}
               </h2>
 
               <p className={`text-sm sm:text-base mb-4 sm:mb-6 leading-relaxed ${
                 isDark ? 'text-blue-100/80' : 'text-gray-700'
               }`}>
-                {product.description}
+                {displayDescription}
               </p>
 
               {/* Specifications */}
