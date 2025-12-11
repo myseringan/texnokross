@@ -90,7 +90,7 @@ export function CategoriesPage({ categories, products, onAddToCart, onViewDetail
                       isDark ? 'bg-gradient-to-br from-slate-800 to-slate-900' : 'bg-gradient-to-br from-blue-50 to-white'
                     }`}>
                       <img
-                        src={product.image_url}
+                        src={product.images?.[0] || product.image_url}
                         alt={getProductName(product, language)}
                         className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
                       />
@@ -158,9 +158,25 @@ export function CategoriesPage({ categories, products, onAddToCart, onViewDetail
                 ? 'bg-white/5 border-white/10' 
                 : 'bg-white/80 border-blue-200'
             }`}>
-              <p className={`text-base sm:text-lg ${isDark ? 'text-blue-200/60' : 'text-blue-600'}`}>
+              <p className={`text-base sm:text-lg mb-4 ${isDark ? 'text-blue-200/60' : 'text-blue-600'}`}>
                 {t.productGrid.noProducts}
               </p>
+              <p className={`text-sm ${isDark ? 'text-blue-200/40' : 'text-blue-500'}`}>
+                {language === 'ru' 
+                  ? `Всего товаров на сайте: ${products.length}` 
+                  : `Saytdagi barcha mahsulotlar: ${products.length}`
+                }
+              </p>
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`mt-4 px-4 py-2 rounded-lg transition-all ${
+                  isDark 
+                    ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300' 
+                    : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                }`}
+              >
+                {language === 'ru' ? '← Все категории' : '← Barcha kategoriyalar'}
+              </button>
             </div>
           )}
         </div>
