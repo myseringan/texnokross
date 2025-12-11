@@ -12,6 +12,7 @@ export interface Product {
   description: string;
   price: number;
   image_url: string;
+  images?: string[]; // Массив фото (до 4 штук)
   specifications: Record<string, string>;
   in_stock: boolean;
   created_at: string;
