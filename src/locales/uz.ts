@@ -54,6 +54,33 @@ export const uz = {
     total: "Jami:",
     checkout: "Buyurtma berish",
   },
+
+  // Order form
+  order: {
+    title: "Buyurtma berish",
+    name: "Ismingiz",
+    namePlaceholder: "Ismingizni kiriting",
+    phone: "Telefon raqam",
+    phonePlaceholder: "+998 90 123 45 67",
+    address: "Manzil (ixtiyoriy)",
+    addressPlaceholder: "Yetkazib berish manzili",
+    comment: "Izoh (ixtiyoriy)",
+    commentPlaceholder: "Qo'shimcha ma'lumot",
+    submit: "Buyurtmani tasdiqlash",
+    submitting: "Yuborilmoqda...",
+    success: "Buyurtmangiz qabul qilindi!",
+    successMessage: "Tez orada siz bilan bog'lanamiz",
+    backToShopping: "Xaridlarni davom ettirish",
+    requiredFields: "Iltimos, ismingiz va telefon raqamingizni kiriting",
+    // Delivery
+    delivery: "Yetkazib berish",
+    deliveryType: "Yetkazib berish turini tanlang",
+    freeDelivery: "Navoiy shahri (5 km gacha)",
+    freeDeliveryLabel: "Bepul",
+    paidDelivery: "Boshqa manzil",
+    deliveryPrice: "Yetkazib berish narxi",
+    subtotal: "Mahsulotlar",
+  },
   
   // Categories Page
   categoriesPage: {

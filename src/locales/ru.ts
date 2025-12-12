@@ -54,6 +54,33 @@ export const ru = {
     total: "Итого:",
     checkout: "Оформить заказ",
   },
+
+  // Order form
+  order: {
+    title: "Оформление заказа",
+    name: "Ваше имя",
+    namePlaceholder: "Введите ваше имя",
+    phone: "Номер телефона",
+    phonePlaceholder: "+998 90 123 45 67",
+    address: "Адрес (необязательно)",
+    addressPlaceholder: "Адрес доставки",
+    comment: "Комментарий (необязательно)",
+    commentPlaceholder: "Дополнительная информация",
+    submit: "Подтвердить заказ",
+    submitting: "Отправка...",
+    success: "Ваш заказ принят!",
+    successMessage: "Мы свяжемся с вами в ближайшее время",
+    backToShopping: "Продолжить покупки",
+    requiredFields: "Пожалуйста, введите имя и номер телефона",
+    // Delivery
+    delivery: "Доставка",
+    deliveryType: "Выберите тип доставки",
+    freeDelivery: "г. Навои (до 5 км)",
+    freeDeliveryLabel: "Бесплатно",
+    paidDelivery: "Другой адрес",
+    deliveryPrice: "Стоимость доставки",
+    subtotal: "Товары",
+  },
   
   // Categories Page
   categoriesPage: {
