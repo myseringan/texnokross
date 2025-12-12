@@ -22,6 +22,7 @@ const CATEGORIES_FILE = path.join(DATA_DIR, 'categories.json');
 const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const CITIES_FILE = path.join(DATA_DIR, 'cities.json');
 
 // Telegram настройки (замени на свои)
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -33,6 +34,15 @@ const DEFAULT_SETTINGS = {
   freeDeliveryRadius: 5, // Радиус бесплатной доставки в км
   freeDeliveryCity: 'Navoiy', // Город бесплатной доставки
 };
+
+// Дефолтные города
+const DEFAULT_CITIES = [
+  { id: 'city_1', name: 'Navoiy', name_ru: 'Навои', price: 0 },
+  { id: 'city_2', name: 'Buxoro', name_ru: 'Бухара', price: 50000 },
+  { id: 'city_3', name: 'Samarqand', name_ru: 'Самарканд', price: 80000 },
+  { id: 'city_4', name: 'Toshkent', name_ru: 'Ташкент', price: 100000 },
+  { id: 'city_5', name: 'Qoraqalpog\'iston', name_ru: 'Каракалпакстан', price: 120000 },
+];
 
 // Дефолтные категории
 const DEFAULT_CATEGORIES = [
@@ -293,15 +303,16 @@ app.post('/api/orders', async (req, res) => {
     `  • ${item.name} x${item.quantity} = ${item.price.toLocaleString()} сум`
   ).join('\n');
 
-  const deliveryInfo = customer.deliveryType === 'paid' 
-    ? `🚚 <b>Доставка:</b> Платная (${customer.deliveryCost?.toLocaleString() || 0} сум)`
-    : `🚚 <b>Доставка:</b> Бесплатная (Навои, до 5 км)`;
+  const deliveryInfo = customer.deliveryCost === 0 
+    ? `🚚 <b>Доставка:</b> Бесплатная`
+    : `🚚 <b>Доставка:</b> ${customer.deliveryCost?.toLocaleString() || 0} сум`;
   
   const telegramMessage = `
 🛒 <b>Новый заказ #${newOrder.id.slice(-6)}</b>
 
 👤 <b>Клиент:</b> ${customer.name}
 📞 <b>Телефон:</b> ${customer.phone}
+🏙 <b>Город:</b> ${customer.city || 'Не указан'}
 ${customer.address ? `📍 <b>Адрес:</b> ${customer.address}` : ''}
 ${deliveryInfo}
 ${customer.comment ? `💬 <b>Комментарий:</b> ${customer.comment}` : ''}
@@ -346,6 +357,52 @@ app.put('/api/settings', (req, res) => {
   const newSettings = { ...currentSettings, ...req.body };
   writeJSON(SETTINGS_FILE, newSettings);
   res.json(newSettings);
+});
+
+// ==================== CITIES ====================
+
+// GET all cities
+app.get('/api/cities', (req, res) => {
+  const cities = readJSON(CITIES_FILE, DEFAULT_CITIES);
+  res.json(cities);
+});
+
+// POST new city
+app.post('/api/cities', (req, res) => {
+  const cities = readJSON(CITIES_FILE, DEFAULT_CITIES);
+  const newCity = {
+    ...req.body,
+    id: req.body.id || `city_${Date.now()}`,
+  };
+  cities.push(newCity);
+  writeJSON(CITIES_FILE, cities);
+  res.json(newCity);
+});
+
+// PUT update city
+app.put('/api/cities/:id', (req, res) => {
+  const cities = readJSON(CITIES_FILE, DEFAULT_CITIES);
+  const index = cities.findIndex(c => c.id === req.params.id);
+  if (index !== -1) {
+    cities[index] = { ...cities[index], ...req.body };
+    writeJSON(CITIES_FILE, cities);
+    res.json(cities[index]);
+  } else {
+    res.status(404).json({ error: 'City not found' });
+  }
+});
+
+// DELETE city
+app.delete('/api/cities/:id', (req, res) => {
+  let cities = readJSON(CITIES_FILE, DEFAULT_CITIES);
+  const initialLength = cities.length;
+  cities = cities.filter(c => c.id !== req.params.id);
+  if (cities.length < initialLength) {
+    writeJSON(CITIES_FILE, cities);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'City not found' });
+  }
 });
 
 app.listen(PORT, () => {
