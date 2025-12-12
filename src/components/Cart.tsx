@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Trash2, ShoppingBag, CheckCircle, ArrowLeft, MapPin, ChevronDown } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, CheckCircle, ArrowLeft, MapPin, ChevronDown, Phone, User, Lock } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import * as api from '../lib/api';
 import type { CartItem, Product } from '../types';
 
@@ -19,7 +20,7 @@ const getProductName = (product: Product, language: string) => {
   return language === 'ru' && product.name_ru ? product.name_ru : product.name;
 };
 
-type CartView = 'cart' | 'checkout' | 'success';
+type CartView = 'cart' | 'login' | 'checkout' | 'success';
 
 interface City {
   id: string;
@@ -31,12 +32,20 @@ interface City {
 export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, onClearCart, total }: CartProps) {
   const { t, language } = useLanguage();
   const { isDark } = useTheme();
+  const { user, isAuthenticated, login } = useAuth();
   
   const [view, setView] = useState<CartView>('cart');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  
+  // Login form
+  const [loginPhone, setLoginPhone] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -51,7 +60,6 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
       try {
         const citiesData = await api.getCities();
         setCities(citiesData);
-        // По умолчанию выбираем первый город (Навои)
         if (citiesData.length > 0) {
           setSelectedCity(citiesData[0]);
         }
@@ -61,6 +69,17 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
     };
     loadCities();
   }, []);
+
+  // Заполняем данные из профиля пользователя
+  useEffect(() => {
+    if (user && isAuthenticated) {
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || user.name || '',
+        phone: prev.phone || user.phone || '',
+      }));
+    }
+  }, [user, isAuthenticated]);
   
   if (!isOpen) return null;
 
@@ -72,13 +91,44 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   };
 
   const handleCheckout = () => {
-    setView('checkout');
-    setError('');
+    if (!isAuthenticated) {
+      setView('login');
+      setLoginError('');
+    } else {
+      setView('checkout');
+      setError('');
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!loginPhone.trim() || !loginPassword.trim()) {
+      setLoginError(language === 'ru' ? 'Введите телефон и пароль' : 'Telefon va parolni kiriting');
+      return;
+    }
+
+    setLoginLoading(true);
+    setLoginError('');
+
+    try {
+      const result = await login(loginPhone, loginPassword);
+      if (result.success) {
+        setView('checkout');
+        setLoginPhone('');
+        setLoginPassword('');
+      } else {
+        setLoginError(result.error || 'Ошибка входа');
+      }
+    } catch (err) {
+      setLoginError(language === 'ru' ? 'Ошибка входа' : 'Kirish xatosi');
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   const handleBackToCart = () => {
     setView('cart');
     setError('');
+    setLoginError('');
   };
 
   const handleSubmitOrder = async () => {
@@ -176,6 +226,109 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                 {t.order.backToShopping}
               </button>
             </div>
+          )}
+
+          {/* LOGIN VIEW */}
+          {view === 'login' && (
+            <>
+              {/* Header */}
+              <div className={`flex items-center justify-between p-4 border-b flex-shrink-0 ${
+                isDark ? 'border-white/10' : 'border-blue-200'
+              }`}>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={handleBackToCart}
+                    className={`p-2 rounded-xl transition-all ${
+                      isDark 
+                        ? 'bg-white/10 hover:bg-white/20' 
+                        : 'bg-blue-100 hover:bg-blue-200'
+                    }`}
+                  >
+                    <ArrowLeft className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-800'}`} />
+                  </button>
+                  <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-blue-900'}`}>
+                    {language === 'ru' ? 'Вход в аккаунт' : 'Hisobga kirish'}
+                  </h2>
+                </div>
+                <button
+                  onClick={onClose}
+                  className={`backdrop-blur-xl border p-2 rounded-xl transition-all ${
+                    isDark 
+                      ? 'bg-white/10 hover:bg-white/20 border-white/20' 
+                      : 'bg-blue-100 hover:bg-blue-200 border-blue-300'
+                  }`}
+                >
+                  <X className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-800'}`} />
+                </button>
+              </div>
+
+              {/* Login Form */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
+                  <User className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+                    {language === 'ru' 
+                      ? 'Войдите или зарегистрируйтесь для оформления заказа' 
+                      : 'Buyurtma berish uchun kiring yoki ro\'yxatdan o\'ting'}
+                  </p>
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
+                    <Phone className="w-4 h-4 inline mr-1" />
+                    {language === 'ru' ? 'Номер телефона' : 'Telefon raqam'}
+                  </label>
+                  <input
+                    type="tel"
+                    value={loginPhone}
+                    onChange={(e) => setLoginPhone(e.target.value)}
+                    placeholder="+998 90 123 45 67"
+                    className={inputClass}
+                  />
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
+                    <Lock className="w-4 h-4 inline mr-1" />
+                    {language === 'ru' ? 'Пароль' : 'Parol'}
+                  </label>
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••"
+                    className={inputClass}
+                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                  />
+                  <p className={`mt-2 text-xs ${isDark ? 'text-blue-200/60' : 'text-blue-600'}`}>
+                    {language === 'ru' 
+                      ? 'Если вы новый пользователь, аккаунт создастся автоматически' 
+                      : 'Yangi foydalanuvchi bo\'lsangiz, hisob avtomatik yaratiladi'}
+                  </p>
+                </div>
+
+                {loginError && (
+                  <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">
+                    {loginError}
+                  </div>
+                )}
+              </div>
+
+              {/* Login Button */}
+              <div className={`p-4 border-t flex-shrink-0 ${isDark ? 'border-white/10' : 'border-blue-200'}`}>
+                <button
+                  onClick={handleLogin}
+                  disabled={loginLoading}
+                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all"
+                >
+                  {loginLoading 
+                    ? (language === 'ru' ? 'Вход...' : 'Kirish...') 
+                    : (language === 'ru' ? 'Войти и продолжить' : 'Kirish va davom etish')}
+                </button>
+              </div>
+            </>
           )}
 
           {/* CHECKOUT VIEW */}
