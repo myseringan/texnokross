@@ -23,6 +23,7 @@ function AppContent() {
     addToCart,
     updateQuantity,
     removeFromCart,
+    clearCart,
     total,
     itemCount
   } = useCart();
@@ -89,6 +90,7 @@ function AppContent() {
         cartItems={cartItems}
         onUpdateQuantity={updateQuantity}
         onRemoveItem={removeFromCart}
+        onClearCart={clearCart}
         total={total}
       />
 
