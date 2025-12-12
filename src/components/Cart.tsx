@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Trash2, ShoppingBag, CheckCircle, ArrowLeft, Truck } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, CheckCircle, ArrowLeft, MapPin, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import * as api from '../lib/api';
@@ -20,7 +20,13 @@ const getProductName = (product: Product, language: string) => {
 };
 
 type CartView = 'cart' | 'checkout' | 'success';
-type DeliveryType = 'free' | 'paid';
+
+interface City {
+  id: string;
+  name: string;
+  name_ru: string;
+  price: number;
+}
 
 export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, onClearCart, total }: CartProps) {
   const { t, language } = useLanguage();
@@ -28,8 +34,9 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   
   const [view, setView] = useState<CartView>('cart');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>('free');
-  const [deliveryPrice, setDeliveryPrice] = useState(30000);
+  const [cities, setCities] = useState<City[]>([]);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -38,23 +45,31 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   });
   const [error, setError] = useState('');
 
-  // Загружаем настройки доставки
+  // Загружаем города
   useEffect(() => {
-    const loadSettings = async () => {
+    const loadCities = async () => {
       try {
-        const settings = await api.getSettings();
-        setDeliveryPrice(settings.deliveryPrice);
+        const citiesData = await api.getCities();
+        setCities(citiesData);
+        // По умолчанию выбираем первый город (Навои)
+        if (citiesData.length > 0) {
+          setSelectedCity(citiesData[0]);
+        }
       } catch (e) {
-        console.error('Failed to load settings:', e);
+        console.error('Failed to load cities:', e);
       }
     };
-    loadSettings();
+    loadCities();
   }, []);
   
   if (!isOpen) return null;
 
-  const deliveryCost = deliveryType === 'paid' ? deliveryPrice : 0;
+  const deliveryCost = selectedCity?.price || 0;
   const grandTotal = total + deliveryCost;
+
+  const getCityName = (city: City) => {
+    return language === 'ru' ? city.name_ru : city.name;
+  };
 
   const handleCheckout = () => {
     setView('checkout');
@@ -69,6 +84,11 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   const handleSubmitOrder = async () => {
     if (!formData.name.trim() || !formData.phone.trim()) {
       setError(t.order.requiredFields);
+      return;
+    }
+
+    if (!selectedCity) {
+      setError(t.order.selectCity);
       return;
     }
 
@@ -90,8 +110,9 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
           phone: formData.phone.trim(),
           address: formData.address.trim() || undefined,
           comment: formData.comment.trim() || undefined,
-          deliveryType: deliveryType,
+          deliveryType: deliveryCost === 0 ? 'free' : 'paid',
           deliveryCost: deliveryCost,
+          city: getCityName(selectedCity),
         },
         orderItems,
         grandTotal
@@ -109,7 +130,9 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   const handleSuccessClose = () => {
     onClearCart();
     setView('cart');
-    setDeliveryType('free');
+    if (cities.length > 0) {
+      setSelectedCity(cities[0]);
+    }
     setFormData({ name: '', phone: '', address: '', comment: '' });
     onClose();
   };
@@ -219,62 +242,72 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   />
                 </div>
 
-                {/* Delivery Type */}
+                {/* City Selection */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
-                    <Truck className="w-4 h-4 inline mr-1" />
-                    {t.order.delivery}
+                    <MapPin className="w-4 h-4 inline mr-1" />
+                    {t.order.city} *
                   </label>
-                  <div className="space-y-2">
-                    {/* Free delivery option */}
+                  <div className="relative">
                     <button
                       type="button"
-                      onClick={() => setDeliveryType('free')}
-                      className={`w-full p-3 rounded-xl border text-left transition-all ${
-                        deliveryType === 'free'
-                          ? isDark 
-                            ? 'bg-green-500/20 border-green-400/50 text-white' 
-                            : 'bg-green-50 border-green-400 text-green-800'
-                          : isDark
-                            ? 'bg-white/5 border-white/20 text-white/70 hover:bg-white/10'
-                            : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50'
+                      onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                      className={`w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center justify-between ${
+                        isDark 
+                          ? 'bg-white/10 border-white/20 text-white hover:bg-white/15' 
+                          : 'bg-white border-blue-200 text-blue-900 hover:bg-blue-50'
                       }`}
                     >
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{t.order.freeDelivery}</span>
-                        <span className={`text-sm font-bold ${
-                          deliveryType === 'free' 
-                            ? isDark ? 'text-green-400' : 'text-green-600'
-                            : isDark ? 'text-green-400/70' : 'text-green-600'
-                        }`}>
-                          {t.order.freeDeliveryLabel}
-                        </span>
-                      </div>
+                      <span>
+                        {selectedCity ? (
+                          <span className="flex items-center gap-2">
+                            {getCityName(selectedCity)}
+                            <span className={`text-sm ${
+                              selectedCity.price === 0 
+                                ? (isDark ? 'text-green-400' : 'text-green-600')
+                                : (isDark ? 'text-blue-300' : 'text-blue-600')
+                            }`}>
+                              {selectedCity.price === 0 ? t.order.freeDeliveryLabel : `${selectedCity.price.toLocaleString()} сум`}
+                            </span>
+                          </span>
+                        ) : t.order.selectCity}
+                      </span>
+                      <ChevronDown className={`w-5 h-5 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
-                    {/* Paid delivery option */}
-                    <button
-                      type="button"
-                      onClick={() => setDeliveryType('paid')}
-                      className={`w-full p-3 rounded-xl border text-left transition-all ${
-                        deliveryType === 'paid'
-                          ? isDark 
-                            ? 'bg-blue-500/20 border-blue-400/50 text-white' 
-                            : 'bg-blue-50 border-blue-400 text-blue-800'
-                          : isDark
-                            ? 'bg-white/5 border-white/20 text-white/70 hover:bg-white/10'
-                            : 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{t.order.paidDelivery}</span>
-                        <span className={`text-sm font-bold ${
-                          isDark ? 'text-blue-300' : 'text-blue-600'
-                        }`}>
-                          {deliveryPrice.toLocaleString()} сум
-                        </span>
+                    {/* Dropdown */}
+                    {isCityDropdownOpen && (
+                      <div className={`absolute z-10 w-full mt-2 rounded-xl border shadow-xl overflow-hidden ${
+                        isDark 
+                          ? 'bg-slate-800 border-white/20' 
+                          : 'bg-white border-blue-200'
+                      }`}>
+                        {cities.map(city => (
+                          <button
+                            key={city.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCity(city);
+                              setIsCityDropdownOpen(false);
+                            }}
+                            className={`w-full px-4 py-3 text-left flex items-center justify-between transition-all ${
+                              selectedCity?.id === city.id
+                                ? (isDark ? 'bg-blue-500/30 text-white' : 'bg-blue-100 text-blue-900')
+                                : (isDark ? 'text-white hover:bg-white/10' : 'text-blue-900 hover:bg-blue-50')
+                            }`}
+                          >
+                            <span>{getCityName(city)}</span>
+                            <span className={`text-sm font-medium ${
+                              city.price === 0 
+                                ? (isDark ? 'text-green-400' : 'text-green-600')
+                                : (isDark ? 'text-blue-300' : 'text-blue-600')
+                            }`}>
+                              {city.price === 0 ? t.order.freeDeliveryLabel : `${city.price.toLocaleString()} сум`}
+                            </span>
+                          </button>
+                        ))}
                       </div>
-                    </button>
+                    )}
                   </div>
                 </div>
 
@@ -330,7 +363,9 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                       <span className={isDark ? 'text-white' : 'text-blue-900'}>{total.toLocaleString()} сум</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className={isDark ? 'text-blue-200' : 'text-blue-700'}>{t.order.delivery}</span>
+                      <span className={isDark ? 'text-blue-200' : 'text-blue-700'}>
+                        {t.order.delivery} ({selectedCity ? getCityName(selectedCity) : ''})
+                      </span>
                       <span className={deliveryCost === 0 
                         ? (isDark ? 'text-green-400' : 'text-green-600') 
                         : (isDark ? 'text-white' : 'text-blue-900')
