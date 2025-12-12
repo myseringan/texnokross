@@ -20,6 +20,19 @@ if (!fs.existsSync(DATA_DIR)) {
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const CATEGORIES_FILE = path.join(DATA_DIR, 'categories.json');
 const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
+const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+
+// Telegram настройки (замени на свои)
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
+
+// Дефолтные настройки
+const DEFAULT_SETTINGS = {
+  deliveryPrice: 30000, // Сумма платной доставки в сумах
+  freeDeliveryRadius: 5, // Радиус бесплатной доставки в км
+  freeDeliveryCity: 'Navoiy', // Город бесплатной доставки
+};
 
 // Дефолтные категории
 const DEFAULT_CATEGORIES = [
@@ -223,6 +236,116 @@ app.delete('/api/banners/:id', (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// ==================== ORDERS ====================
+
+// Функция отправки в Telegram
+async function sendToTelegram(message) {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.log('Telegram not configured, skipping notification');
+    return false;
+  }
+  
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: message,
+        parse_mode: 'HTML'
+      })
+    });
+    return response.ok;
+  } catch (err) {
+    console.error('Telegram error:', err);
+    return false;
+  }
+}
+
+// GET all orders
+app.get('/api/orders', (req, res) => {
+  const orders = readJSON(ORDERS_FILE, []);
+  res.json(orders);
+});
+
+// POST new order
+app.post('/api/orders', async (req, res) => {
+  const orders = readJSON(ORDERS_FILE, []);
+  const { customer, items, total } = req.body;
+  
+  const newOrder = {
+    id: `order_${Date.now()}`,
+    customer,
+    items,
+    total,
+    status: 'new',
+    created_at: new Date().toISOString(),
+  };
+  
+  orders.unshift(newOrder);
+  writeJSON(ORDERS_FILE, orders);
+  
+  // Формируем сообщение для Telegram
+  let itemsList = items.map(item => 
+    `  • ${item.name} x${item.quantity} = ${item.price.toLocaleString()} сум`
+  ).join('\n');
+
+  const deliveryInfo = customer.deliveryType === 'paid' 
+    ? `🚚 <b>Доставка:</b> Платная (${customer.deliveryCost?.toLocaleString() || 0} сум)`
+    : `🚚 <b>Доставка:</b> Бесплатная (Навои, до 5 км)`;
+  
+  const telegramMessage = `
+🛒 <b>Новый заказ #${newOrder.id.slice(-6)}</b>
+
+👤 <b>Клиент:</b> ${customer.name}
+📞 <b>Телефон:</b> ${customer.phone}
+${customer.address ? `📍 <b>Адрес:</b> ${customer.address}` : ''}
+${deliveryInfo}
+${customer.comment ? `💬 <b>Комментарий:</b> ${customer.comment}` : ''}
+
+📦 <b>Товары:</b>
+${itemsList}
+
+💰 <b>Итого:</b> ${total.toLocaleString()} сум
+
+🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
+  `.trim();
+  
+  await sendToTelegram(telegramMessage);
+  
+  res.json(newOrder);
+});
+
+// PUT update order status
+app.put('/api/orders/:id', (req, res) => {
+  const orders = readJSON(ORDERS_FILE, []);
+  const index = orders.findIndex(o => o.id === req.params.id);
+  if (index !== -1) {
+    orders[index] = { ...orders[index], ...req.body };
+    writeJSON(ORDERS_FILE, orders);
+    res.json(orders[index]);
+  } else {
+    res.status(404).json({ error: 'Order not found' });
+  }
+});
+
+// ==================== SETTINGS ====================
+
+// GET settings
+app.get('/api/settings', (req, res) => {
+  const settings = readJSON(SETTINGS_FILE, DEFAULT_SETTINGS);
+  res.json(settings);
+});
+
+// PUT update settings
+app.put('/api/settings', (req, res) => {
+  const currentSettings = readJSON(SETTINGS_FILE, DEFAULT_SETTINGS);
+  const newSettings = { ...currentSettings, ...req.body };
+  writeJSON(SETTINGS_FILE, newSettings);
+  res.json(newSettings);
 });
 
 app.listen(PORT, () => {
