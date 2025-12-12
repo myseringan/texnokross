@@ -80,6 +80,9 @@ export const ru = {
     paidDelivery: "Другой адрес",
     deliveryPrice: "Стоимость доставки",
     subtotal: "Товары",
+    // City
+    city: "Город",
+    selectCity: "Выберите город",
   },
   
   // Categories Page

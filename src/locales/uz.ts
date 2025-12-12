@@ -80,6 +80,9 @@ export const uz = {
     paidDelivery: "Boshqa manzil",
     deliveryPrice: "Yetkazib berish narxi",
     subtotal: "Mahsulotlar",
+    // City
+    city: "Shahar",
+    selectCity: "Shaharni tanlang",
   },
   
   // Categories Page
