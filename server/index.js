@@ -405,6 +405,162 @@ app.delete('/api/cities/:id', (req, res) => {
   }
 });
 
+// ==================== IMPROSOFT SYNC ====================
+
+// Файл для сырых данных IMPROSOFT
+const IMPROSOFT_FILE = path.join(DATA_DIR, 'improsoft_raw.json');
+
+// POST sync products from IMPROSOFT (сохраняет сырые данные)
+app.post('/api/improsoft/sync', (req, res) => {
+  try {
+    const { products } = req.body;
+    
+    if (!products || !Array.isArray(products)) {
+      return res.status(400).json({ error: 'Invalid data format' });
+    }
+    
+    // Сохраняем сырые данные IMPROSOFT
+    const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
+    
+    let added = 0;
+    let updated = 0;
+    
+    for (const item of products) {
+      const { name, barcode, price } = item;
+      if (!name || !barcode) continue;
+      
+      const existingIndex = improsoftRaw.findIndex(p => p.barcode === barcode);
+      
+      if (existingIndex >= 0) {
+        improsoftRaw[existingIndex].name = name;
+        improsoftRaw[existingIndex].price = price || improsoftRaw[existingIndex].price;
+        improsoftRaw[existingIndex].updated_at = new Date().toISOString();
+        updated++;
+      } else {
+        improsoftRaw.push({
+          id: `imp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name,
+          barcode,
+          price: price || 0,
+          created_at: new Date().toISOString()
+        });
+        added++;
+      }
+    }
+    
+    writeJSON(IMPROSOFT_FILE, improsoftRaw);
+    
+    // Также обновляем цены существующих товаров в каталоге
+    const catalogProducts = readJSON(PRODUCTS_FILE, []);
+    let catalogUpdated = 0;
+    
+    for (const item of products) {
+      const catalogProduct = catalogProducts.find(p => p.barcode === item.barcode);
+      if (catalogProduct && item.price) {
+        catalogProduct.price = item.price;
+        catalogUpdated++;
+      }
+    }
+    
+    if (catalogUpdated > 0) {
+      writeJSON(PRODUCTS_FILE, catalogProducts);
+    }
+    
+    console.log(`IMPROSOFT Sync: raw added ${added}, raw updated ${updated}, catalog prices updated ${catalogUpdated}`);
+    
+    res.json({
+      success: true,
+      added,
+      updated,
+      catalogUpdated,
+      total: improsoftRaw.length
+    });
+    
+  } catch (error) {
+    console.error('IMPROSOFT sync error:', error);
+    res.status(500).json({ error: 'Sync failed' });
+  }
+});
+
+// GET improsoft sync status
+app.get('/api/improsoft/status', (req, res) => {
+  const products = readJSON(PRODUCTS_FILE, []);
+  const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
+  const improsoftProducts = products.filter(p => p.source === 'improsoft');
+  
+  res.json({
+    total: products.length,
+    fromImprosoft: improsoftProducts.length,
+    rawTotal: improsoftRaw.length,
+    notAdded: improsoftRaw.length - improsoftProducts.length,
+    lastSync: improsoftRaw.length > 0 ? 
+      improsoftRaw.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))[0].updated_at || improsoftRaw[0].created_at : null
+  });
+});
+
+// GET raw improsoft products (для админки - список товаров)
+app.get('/api/improsoft/products', (req, res) => {
+  const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
+  const products = readJSON(PRODUCTS_FILE, []);
+  
+  // Помечаем какие уже добавлены в каталог
+  const existingBarcodes = products.filter(p => p.barcode).map(p => p.barcode);
+  
+  const result = improsoftRaw.map(item => ({
+    ...item,
+    inCatalog: existingBarcodes.includes(item.barcode)
+  }));
+  
+  res.json(result);
+});
+
+// POST create product from improsoft item (создать карточку)
+app.post('/api/improsoft/create-product', (req, res) => {
+  try {
+    const { barcode, name, name_ru, price, category_id, image_url, description, description_ru } = req.body;
+    
+    if (!barcode || !name) {
+      return res.status(400).json({ error: 'Barcode and name required' });
+    }
+    
+    const products = readJSON(PRODUCTS_FILE, []);
+    
+    // Проверяем что товар с таким штрихкодом ещё не добавлен
+    if (products.find(p => p.barcode === barcode)) {
+      return res.status(400).json({ error: 'Product with this barcode already exists' });
+    }
+    
+    const newProduct = {
+      id: `prod_${Date.now()}`,
+      name,
+      name_ru: name_ru || name,
+      description: description || '',
+      description_ru: description_ru || '',
+      price: price || 0,
+      image_url: image_url || 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400',
+      images: [],
+      category_id: category_id || '',
+      in_stock: true,
+      barcode,
+      specifications: {},
+      specifications_ru: {},
+      created_at: new Date().toISOString(),
+      source: 'improsoft'
+    };
+    
+    products.push(newProduct);
+    writeJSON(PRODUCTS_FILE, products);
+    
+    console.log(`Created product from IMPROSOFT: ${name} (${barcode})`);
+    
+    res.json(newProduct);
+    
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Texnokross API running on port ${PORT}`);
   console.log(`📁 Data stored in: ${DATA_DIR}`);
