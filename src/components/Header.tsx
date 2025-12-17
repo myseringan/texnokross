@@ -5,8 +5,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
-// SVG Logo Component
-const Logo = ({ className = "w-6 h-6" }: { className?: string }) => (
+// SVG Logo Component - Большой квадратный логотип
+const Logo = ({ className = "w-8 h-8" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 2834.65 2834.65" xmlns="http://www.w3.org/2000/svg">
     <path fill="currentColor" d="M1714.6,822.47h-594.54c-164.3,0-297.74,133.13-297.74,297.74v594.54c0,164.3,133.44,297.43,297.74,297.43h594.54c164.3,0,297.74-133.13,297.74-297.43v-594.54c0-164.61-133.44-297.74-297.74-297.74ZM1417.17,1880.3c-255.65,0-462.67-207.32-462.67-462.97s207.01-462.66,462.67-462.66,462.97,207.01,462.97,462.66-207.33,462.97-462.97,462.97Z"/>
     <path fill="currentColor" d="M1419.06,1126.67c-36.5,0-66.09,29.59-66.09,66.09v207.62c0,36.5,29.59,66.09,66.09,66.09s66.09-29.59,66.09-66.09v-207.62c0-36.5-29.59-66.09-66.09-66.09Z"/>
@@ -35,17 +35,17 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2 group">
+          <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group">
             <div className="relative">
-              <div className={`absolute inset-0 blur-xl opacity-50 group-hover:opacity-75 transition-opacity rounded-full ${
-                isDark ? 'bg-blue-500' : 'bg-blue-400'
+              <div className={`absolute inset-0 blur-xl opacity-40 group-hover:opacity-60 transition-opacity ${
+                isDark ? 'bg-blue-400' : 'bg-blue-500'
               }`}></div>
-              <div className="relative bg-gradient-to-br from-blue-500 to-blue-700 p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl shadow-2xl transform group-hover:scale-110 transition-transform">
-                <Logo className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
-              </div>
+              <Logo className={`relative w-9 h-9 sm:w-12 sm:h-12 transform group-hover:scale-110 transition-transform ${
+                isDark ? 'text-blue-400' : 'text-blue-600'
+              }`} />
             </div>
             <div>
-              <h1 className={`text-base sm:text-3xl font-bold bg-clip-text text-transparent drop-shadow-lg ${
+              <h1 className={`text-lg sm:text-3xl font-bold bg-clip-text text-transparent drop-shadow-lg ${
                 isDark 
                   ? 'bg-gradient-to-r from-blue-100 via-white to-blue-100' 
                   : 'bg-gradient-to-r from-blue-700 via-blue-900 to-blue-700'
