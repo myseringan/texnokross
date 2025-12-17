@@ -1,17 +1,115 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="uz">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Texnokross - современная бытовая техника премиум класса. Широкий выбор холодильников, стиральных машин, телевизоров и другой техники." />
-    <title>Texnokross - Бытовая техника премиум класса</title>
-    <meta property="og:image" content="https://bolt.new/static/og_default.png">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
-</head>
+    <meta name="theme-color" content="#007efb" />
+    <meta name="description" content="Texnokross - Maishiy texnika do'koni. Muzlatgichlar, konditsionerlar, televizorlar va boshqa maishiy texnika." />
+    <meta name="keywords" content="texnokross, maishiy texnika, muzlatgich, konditsioner, televizor, kir yuvish mashinasi" />
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Texnokross - Maishiy texnika" />
+    <meta property="og:description" content="Sifatli maishiy texnika - arzon narxlarda" />
+    <meta property="og:image" content="/logo.svg" />
+    <meta property="og:type" content="website" />
+    
+    <title>Texnokross - Maishiy texnika</title>
+    
+    <style>
+      /* Loading Screen */
+      #app-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0a1628 0%, #1a2d4a 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
+      }
+      
+      #app-loader.hidden {
+        opacity: 0;
+        visibility: hidden;
+      }
+      
+      #app-loader svg {
+        width: 120px;
+        height: 120px;
+        animation: pulse 1.5s ease-in-out infinite, float 2s ease-in-out infinite;
+      }
+      
+      #app-loader .loader-text {
+        color: #007efb;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        margin-top: 20px;
+        letter-spacing: 2px;
+        animation: fadeInOut 1.5s ease-in-out infinite;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+      }
+      
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+      
+      @keyframes fadeInOut {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+      }
+      
+      /* Dots animation */
+      .dots::after {
+        content: '';
+        animation: dots 1.5s steps(4, end) infinite;
+      }
+      
+      @keyframes dots {
+        0% { content: ''; }
+        25% { content: '.'; }
+        50% { content: '..'; }
+        75% { content: '...'; }
+      }
+    </style>
+  </head>
   <body>
+    <!-- Loading Screen -->
+    <div id="app-loader">
+      <svg viewBox="0 0 2834.65 2834.65" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#007efb" d="M1714.6,822.47h-594.54c-164.3,0-297.74,133.13-297.74,297.74v594.54c0,164.3,133.44,297.43,297.74,297.43h594.54c164.3,0,297.74-133.13,297.74-297.43v-594.54c0-164.61-133.44-297.74-297.74-297.74ZM1417.17,1880.3c-255.65,0-462.67-207.32-462.67-462.97s207.01-462.66,462.67-462.66,462.97,207.01,462.97,462.66-207.33,462.97-462.97,462.97Z"/>
+        <path fill="#007efb" d="M1419.06,1126.67c-36.5,0-66.09,29.59-66.09,66.09v207.62c0,36.5,29.59,66.09,66.09,66.09s66.09-29.59,66.09-66.09v-207.62c0-36.5-29.59-66.09-66.09-66.09Z"/>
+      </svg>
+      <div class="loader-text">TEXNOKROSS<span class="dots"></span></div>
+    </div>
+    
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <script>
+      // Скрыть loader когда приложение загрузилось
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const loader = document.getElementById('app-loader');
+          if (loader) {
+            loader.classList.add('hidden');
+            setTimeout(function() {
+              loader.remove();
+            }, 500);
+          }
+        }, 800);
+      });
+    </script>
   </body>
 </html>
