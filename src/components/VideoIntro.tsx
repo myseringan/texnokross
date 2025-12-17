@@ -3,21 +3,21 @@ import { useState, useEffect, useRef } from 'react';
 interface VideoIntroProps {
   onComplete: () => void;
   videoSrc?: string;
-  maxDuration?: number; // Максимальная длительность в секундах
+  maxDuration?: number;
 }
 
 export function VideoIntro({ 
   onComplete, 
   videoSrc = '/intro.mp4',
-  maxDuration = 15 // По умолчанию 15 секунд макс
+  maxDuration = 15
 }: VideoIntroProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [isFading, setIsFading] = useState(false);
+  const [videoLoaded, setVideoLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Проверяем, показывали ли уже интро в этой сессии
     const hasSeenIntro = sessionStorage.getItem('hasSeenIntro');
     
     if (hasSeenIntro) {
@@ -26,7 +26,6 @@ export function VideoIntro({
       return;
     }
 
-    // Максимальный таймер - скрыть через maxDuration секунд в любом случае
     timerRef.current = setTimeout(() => {
       handleClose();
     }, maxDuration * 1000);
@@ -44,7 +43,6 @@ export function VideoIntro({
     setIsFading(true);
     sessionStorage.setItem('hasSeenIntro', 'true');
     
-    // Плавное исчезновение
     setTimeout(() => {
       setIsVisible(false);
       onComplete();
@@ -59,36 +57,63 @@ export function VideoIntro({
     handleClose();
   };
 
+  const handleVideoLoaded = () => {
+    setVideoLoaded(true);
+  };
+
   if (!isVisible) return null;
 
   return (
     <div 
-      className={`fixed inset-0 z-[9999] bg-black flex items-center justify-center transition-opacity duration-700 ${
+      className={`fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center transition-opacity duration-700 ${
         isFading ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      {/* Video Background */}
+      {/* Video Background - адаптивное */}
       <video
         ref={videoRef}
         autoPlay
         muted
         playsInline
         onEnded={handleVideoEnd}
-        className="absolute inset-0 w-full h-full object-cover"
+        onLoadedData={handleVideoLoaded}
+        className="absolute inset-0 w-full h-full object-contain sm:object-cover"
+        style={{ backgroundColor: '#0a1628' }}
       >
         <source src={videoSrc} type="video/mp4" />
       </video>
 
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/20"></div>
+      {/* Gradient Overlay для мобилки */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20 sm:bg-black/10"></div>
 
-      {/* Skip Button */}
+      {/* Loading Spinner - пока видео грузится */}
+      {!videoLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
+          <div className="text-center">
+            <svg className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 text-blue-500 animate-pulse" viewBox="0 0 2834.65 2834.65">
+              <path fill="currentColor" d="M1714.6,822.47h-594.54c-164.3,0-297.74,133.13-297.74,297.74v594.54c0,164.3,133.44,297.43,297.74,297.43h594.54c164.3,0,297.74-133.13,297.74-297.43v-594.54c0-164.61-133.44-297.74-297.74-297.74ZM1417.17,1880.3c-255.65,0-462.67-207.32-462.67-462.97s207.01-462.66,462.67-462.66,462.97,207.01,462.97,462.66-207.33,462.97-462.97,462.97Z"/>
+              <path fill="currentColor" d="M1419.06,1126.67c-36.5,0-66.09,29.59-66.09,66.09v207.62c0,36.5,29.59,66.09,66.09,66.09s66.09-29.59,66.09-66.09v-207.62c0-36.5-29.59-66.09-66.09-66.09Z"/>
+            </svg>
+            <p className="text-blue-400 text-lg font-medium animate-pulse">TEXNOKROSS</p>
+          </div>
+        </div>
+      )}
+
+      {/* Skip Button - адаптивный */}
       <button
         onClick={handleSkip}
-        className="absolute bottom-8 right-8 sm:bottom-12 sm:right-12 z-10 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white font-medium transition-all duration-300 border border-white/20 hover:border-white/40 group"
+        className="absolute bottom-4 right-4 sm:bottom-8 sm:right-8 md:bottom-12 md:right-12 z-10 
+                   px-4 py-2 sm:px-6 sm:py-3 
+                   bg-white/10 hover:bg-white/20 active:bg-white/30
+                   backdrop-blur-md rounded-full 
+                   text-white text-sm sm:text-base font-medium 
+                   transition-all duration-300 
+                   border border-white/20 hover:border-white/40 
+                   group touch-manipulation"
       >
-        <span className="flex items-center gap-2">
-          O'tkazib yuborish
+        <span className="flex items-center gap-1.5 sm:gap-2">
+          <span className="hidden xs:inline">O'tkazib yuborish</span>
+          <span className="xs:hidden">O'tkazish</span>
           <svg 
             className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" 
             fill="none" 
@@ -100,12 +125,22 @@ export function VideoIntro({
         </span>
       </button>
 
-      {/* Loading indicator (shows while video loads) */}
-      <div className="absolute bottom-8 left-8 sm:bottom-12 sm:left-12 text-white/50 text-sm">
+      {/* Logo Badge - адаптивный */}
+      <div className="absolute bottom-4 left-4 sm:bottom-8 sm:left-8 md:bottom-12 md:left-12 text-white/60 text-xs sm:text-sm">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-          <span>TEXNOKROSS</span>
+          <span className="font-medium tracking-wider">TEXNOKROSS</span>
         </div>
+      </div>
+
+      {/* Tap to skip hint - только на мобилке */}
+      <div 
+        className="absolute inset-0 sm:hidden" 
+        onClick={handleSkip}
+      >
+        <p className="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-32 text-white/30 text-xs animate-pulse">
+          Bosib o'tkazish
+        </p>
       </div>
     </div>
   );

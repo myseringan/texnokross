@@ -33,26 +33,26 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
         : 'bg-gradient-to-r from-white/95 via-blue-50/90 to-white/95 border-blue-200/50'
     }`}>
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-20">
+        <div className="flex items-center justify-between h-16 sm:h-20 md:h-24">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group">
             <div className="relative">
-              <div className={`absolute inset-0 blur-xl opacity-40 group-hover:opacity-60 transition-opacity ${
+              <div className={`absolute inset-0 blur-xl opacity-50 group-hover:opacity-70 transition-opacity ${
                 isDark ? 'bg-blue-400' : 'bg-blue-500'
               }`}></div>
-              <Logo className={`relative w-9 h-9 sm:w-12 sm:h-12 transform group-hover:scale-110 transition-transform ${
+              <Logo className={`relative w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 transform group-hover:scale-110 transition-transform drop-shadow-lg ${
                 isDark ? 'text-blue-400' : 'text-blue-600'
               }`} />
             </div>
             <div>
-              <h1 className={`text-lg sm:text-3xl font-bold bg-clip-text text-transparent drop-shadow-lg ${
+              <h1 className={`text-xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent drop-shadow-lg ${
                 isDark 
                   ? 'bg-gradient-to-r from-blue-100 via-white to-blue-100' 
                   : 'bg-gradient-to-r from-blue-700 via-blue-900 to-blue-700'
               }`}>
                 Texnokross
               </h1>
-              <p className={`hidden sm:block text-xs tracking-wider ${
+              <p className={`hidden sm:block text-xs md:text-sm tracking-wider ${
                 isDark ? 'text-blue-200/80' : 'text-blue-600/80'
               }`}>{t.header.subtitle}</p>
             </div>
