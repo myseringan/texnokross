@@ -176,7 +176,8 @@ function AppContent() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }
 
