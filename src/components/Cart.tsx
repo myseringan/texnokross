@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Trash2, ShoppingBag, CheckCircle, ArrowLeft, MapPin, ChevronDown, Phone, User, Lock } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, CheckCircle, ArrowLeft, MapPin, ChevronDown, Phone, User, Lock, CreditCard, Loader2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,7 +20,7 @@ const getProductName = (product: Product, language: string) => {
   return language === 'ru' && product.name_ru ? product.name_ru : product.name;
 };
 
-type CartView = 'cart' | 'login' | 'checkout' | 'success';
+type CartView = 'cart' | 'login' | 'checkout' | 'processing' | 'success';
 
 interface City {
   id: string;
@@ -40,7 +40,6 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   
-  // Login form
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -54,15 +53,12 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   });
   const [error, setError] = useState('');
 
-  // Загружаем города
   useEffect(() => {
     const loadCities = async () => {
       try {
         const citiesData = await api.getCities();
         setCities(citiesData);
-        if (citiesData.length > 0) {
-          setSelectedCity(citiesData[0]);
-        }
+        if (citiesData.length > 0) setSelectedCity(citiesData[0]);
       } catch (e) {
         console.error('Failed to load cities:', e);
       }
@@ -70,7 +66,6 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
     loadCities();
   }, []);
 
-  // Заполняем данные из профиля пользователя
   useEffect(() => {
     if (user && isAuthenticated) {
       setFormData(prev => ({
@@ -86,9 +81,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   const deliveryCost = selectedCity?.price || 0;
   const grandTotal = total + deliveryCost;
 
-  const getCityName = (city: City) => {
-    return language === 'ru' ? city.name_ru : city.name;
-  };
+  const getCityName = (city: City) => language === 'ru' ? city.name_ru : city.name;
 
   const handleCheckout = () => {
     if (!isAuthenticated) {
@@ -105,10 +98,8 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
       setLoginError(language === 'ru' ? 'Введите телефон и пароль' : 'Telefon va parolni kiriting');
       return;
     }
-
     setLoginLoading(true);
     setLoginError('');
-
     try {
       const result = await login(loginPhone, loginPassword);
       if (result.success) {
@@ -136,7 +127,6 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
       setError(t.order.requiredFields);
       return;
     }
-
     if (!selectedCity) {
       setError(t.order.selectCity);
       return;
@@ -154,7 +144,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
         image_url: item.product.image_url,
       }));
 
-      await api.createOrder(
+      const orderResponse = await api.createOrder(
         {
           name: formData.name.trim(),
           phone: formData.phone.trim(),
@@ -168,10 +158,20 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
         grandTotal
       );
 
-      setView('success');
+      setView('processing');
+
+      const paymentResponse = await api.createPayment(orderResponse.order.id, grandTotal);
+      
+      if (paymentResponse.payment_url) {
+        onClearCart();
+        window.location.href = paymentResponse.payment_url;
+      } else {
+        throw new Error('No payment URL');
+      }
     } catch (err) {
       console.error('Order error:', err);
-      setError('Ошибка при оформлении заказа');
+      setError(language === 'ru' ? 'Ошибка при создании платежа' : 'Tolov yaratishda xatolik');
+      setView('checkout');
     } finally {
       setIsSubmitting(false);
     }
@@ -180,9 +180,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   const handleSuccessClose = () => {
     onClearCart();
     setView('cart');
-    if (cities.length > 0) {
-      setSelectedCity(cities[0]);
-    }
+    if (cities.length > 0) setSelectedCity(cities[0]);
     setFormData({ name: '', phone: '', address: '', comment: '' });
     onClose();
   };
@@ -195,10 +193,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div 
-        className={`absolute inset-0 backdrop-blur-sm ${isDark ? 'bg-slate-900/80' : 'bg-slate-900/50'}`}
-        onClick={onClose}
-      ></div>
+      <div className={`absolute inset-0 backdrop-blur-sm ${isDark ? 'bg-slate-900/80' : 'bg-slate-900/50'}`} onClick={onClose}></div>
 
       <div className="absolute right-0 top-0 bottom-0 w-full max-w-[100vw] sm:max-w-md animate-in slide-in-from-right duration-300">
         <div className={`h-full backdrop-blur-2xl border-l shadow-2xl flex flex-col transition-colors duration-300 ${
@@ -207,22 +202,31 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
             : 'bg-gradient-to-br from-white via-blue-50 to-white border-blue-300'
         }`}>
           
+          {/* PROCESSING VIEW */}
+          {view === 'processing' && (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className={`p-6 rounded-full mb-6 ${isDark ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+                <Loader2 className={`w-16 h-16 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+              </div>
+              <h2 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>
+                {language === 'ru' ? 'Переход к оплате...' : 'Tolovga otish...'}
+              </h2>
+              <p className={`mb-4 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
+                {language === 'ru' ? 'Подождите, идёт перенаправление на Payme' : 'Iltimos kuting, Payme ga yonaltirilmoqda'}
+              </p>
+              <img src="https://cdn.payme.uz/logo/payme_color.svg" alt="Payme" className="h-8 mt-4" />
+            </div>
+          )}
+
           {/* SUCCESS VIEW */}
           {view === 'success' && (
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
               <div className={`p-6 rounded-full mb-6 ${isDark ? 'bg-green-500/20' : 'bg-green-100'}`}>
                 <CheckCircle className={`w-16 h-16 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
               </div>
-              <h2 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>
-                {t.order.success}
-              </h2>
-              <p className={`mb-8 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
-                {t.order.successMessage}
-              </p>
-              <button
-                onClick={handleSuccessClose}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all"
-              >
+              <h2 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>{t.order.success}</h2>
+              <p className={`mb-8 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>{t.order.successMessage}</p>
+              <button onClick={handleSuccessClose} className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all">
                 {t.order.backToShopping}
               </button>
             </div>
@@ -231,101 +235,53 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
           {/* LOGIN VIEW */}
           {view === 'login' && (
             <>
-              {/* Header */}
-              <div className={`flex items-center justify-between p-4 border-b flex-shrink-0 ${
-                isDark ? 'border-white/10' : 'border-blue-200'
-              }`}>
+              <div className={`flex items-center justify-between p-4 border-b flex-shrink-0 ${isDark ? 'border-white/10' : 'border-blue-200'}`}>
                 <div className="flex items-center space-x-3">
-                  <button
-                    onClick={handleBackToCart}
-                    className={`p-2 rounded-xl transition-all ${
-                      isDark 
-                        ? 'bg-white/10 hover:bg-white/20' 
-                        : 'bg-blue-100 hover:bg-blue-200'
-                    }`}
-                  >
+                  <button onClick={handleBackToCart} className={`p-2 rounded-xl transition-all ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-blue-100 hover:bg-blue-200'}`}>
                     <ArrowLeft className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-800'}`} />
                   </button>
                   <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-blue-900'}`}>
                     {language === 'ru' ? 'Вход в аккаунт' : 'Hisobga kirish'}
                   </h2>
                 </div>
-                <button
-                  onClick={onClose}
-                  className={`backdrop-blur-xl border p-2 rounded-xl transition-all ${
-                    isDark 
-                      ? 'bg-white/10 hover:bg-white/20 border-white/20' 
-                      : 'bg-blue-100 hover:bg-blue-200 border-blue-300'
-                  }`}
-                >
+                <button onClick={onClose} className={`backdrop-blur-xl border p-2 rounded-xl transition-all ${isDark ? 'bg-white/10 hover:bg-white/20 border-white/20' : 'bg-blue-100 hover:bg-blue-200 border-blue-300'}`}>
                   <X className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-800'}`} />
                 </button>
               </div>
 
-              {/* Login Form */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 <div className={`p-4 rounded-xl text-center ${isDark ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
                   <User className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
                   <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
-                    {language === 'ru' 
-                      ? 'Войдите или зарегистрируйтесь для оформления заказа' 
-                      : 'Buyurtma berish uchun kiring yoki ro\'yxatdan o\'ting'}
+                    {language === 'ru' ? 'Войдите или зарегистрируйтесь для оформления заказа' : 'Buyurtma berish uchun kiring'}
                   </p>
                 </div>
 
-                {/* Phone */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
                     <Phone className="w-4 h-4 inline mr-1" />
                     {language === 'ru' ? 'Номер телефона' : 'Telefon raqam'}
                   </label>
-                  <input
-                    type="tel"
-                    value={loginPhone}
-                    onChange={(e) => setLoginPhone(e.target.value)}
-                    placeholder="+998 90 123 45 67"
-                    className={inputClass}
-                  />
+                  <input type="tel" value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)} placeholder="+998 90 123 45 67" className={inputClass} />
                 </div>
 
-                {/* Password */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
                     <Lock className="w-4 h-4 inline mr-1" />
                     {language === 'ru' ? 'Пароль' : 'Parol'}
                   </label>
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="••••••"
-                    className={inputClass}
-                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  />
+                  <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••" className={inputClass} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
                   <p className={`mt-2 text-xs ${isDark ? 'text-blue-200/60' : 'text-blue-600'}`}>
-                    {language === 'ru' 
-                      ? 'Если вы новый пользователь, аккаунт создастся автоматически' 
-                      : 'Yangi foydalanuvchi bo\'lsangiz, hisob avtomatik yaratiladi'}
+                    {language === 'ru' ? 'Если вы новый пользователь, аккаунт создастся автоматически' : 'Yangi foydalanuvchi bolsangiz, hisob avtomatik yaratiladi'}
                   </p>
                 </div>
 
-                {loginError && (
-                  <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                    {loginError}
-                  </div>
-                )}
+                {loginError && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">{loginError}</div>}
               </div>
 
-              {/* Login Button */}
               <div className={`p-4 border-t flex-shrink-0 ${isDark ? 'border-white/10' : 'border-blue-200'}`}>
-                <button
-                  onClick={handleLogin}
-                  disabled={loginLoading}
-                  className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all"
-                >
-                  {loginLoading 
-                    ? (language === 'ru' ? 'Вход...' : 'Kirish...') 
-                    : (language === 'ru' ? 'Войти и продолжить' : 'Kirish va davom etish')}
+                <button onClick={handleLogin} disabled={loginLoading} className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all">
+                  {loginLoading ? (language === 'ru' ? 'Вход...' : 'Kirish...') : (language === 'ru' ? 'Войти и продолжить' : 'Kirish va davom etish')}
                 </button>
               </div>
             </>
@@ -334,92 +290,40 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
           {/* CHECKOUT VIEW */}
           {view === 'checkout' && (
             <>
-              {/* Header */}
-              <div className={`flex items-center justify-between p-4 border-b flex-shrink-0 ${
-                isDark ? 'border-white/10' : 'border-blue-200'
-              }`}>
+              <div className={`flex items-center justify-between p-4 border-b flex-shrink-0 ${isDark ? 'border-white/10' : 'border-blue-200'}`}>
                 <div className="flex items-center space-x-3">
-                  <button
-                    onClick={handleBackToCart}
-                    className={`p-2 rounded-xl transition-all ${
-                      isDark 
-                        ? 'bg-white/10 hover:bg-white/20' 
-                        : 'bg-blue-100 hover:bg-blue-200'
-                    }`}
-                  >
+                  <button onClick={handleBackToCart} className={`p-2 rounded-xl transition-all ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-blue-100 hover:bg-blue-200'}`}>
                     <ArrowLeft className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-800'}`} />
                   </button>
-                  <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-blue-900'}`}>
-                    {t.order.title}
-                  </h2>
+                  <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-blue-900'}`}>{t.order.title}</h2>
                 </div>
-                <button
-                  onClick={onClose}
-                  className={`backdrop-blur-xl border p-2 rounded-xl transition-all ${
-                    isDark 
-                      ? 'bg-white/10 hover:bg-white/20 border-white/20' 
-                      : 'bg-blue-100 hover:bg-blue-200 border-blue-300'
-                  }`}
-                >
+                <button onClick={onClose} className={`backdrop-blur-xl border p-2 rounded-xl transition-all ${isDark ? 'bg-white/10 hover:bg-white/20 border-white/20' : 'bg-blue-100 hover:bg-blue-200 border-blue-300'}`}>
                   <X className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-800'}`} />
                 </button>
               </div>
 
-              {/* Form */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Name */}
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
-                    {t.order.name} *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder={t.order.namePlaceholder}
-                    className={inputClass}
-                  />
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>{t.order.name} *</label>
+                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder={t.order.namePlaceholder} className={inputClass} />
                 </div>
 
-                {/* Phone */}
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
-                    {t.order.phone} *
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder={t.order.phonePlaceholder}
-                    className={inputClass}
-                  />
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>{t.order.phone} *</label>
+                  <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder={t.order.phonePlaceholder} className={inputClass} />
                 </div>
 
-                {/* City Selection */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
-                    <MapPin className="w-4 h-4 inline mr-1" />
-                    {t.order.city} *
+                    <MapPin className="w-4 h-4 inline mr-1" />{t.order.city} *
                   </label>
                   <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-                      className={`w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center justify-between ${
-                        isDark 
-                          ? 'bg-white/10 border-white/20 text-white hover:bg-white/15' 
-                          : 'bg-white border-blue-200 text-blue-900 hover:bg-blue-50'
-                      }`}
-                    >
+                    <button type="button" onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)} className={`w-full px-4 py-3 rounded-xl border text-left transition-all flex items-center justify-between ${isDark ? 'bg-white/10 border-white/20 text-white hover:bg-white/15' : 'bg-white border-blue-200 text-blue-900 hover:bg-blue-50'}`}>
                       <span>
                         {selectedCity ? (
                           <span className="flex items-center gap-2">
                             {getCityName(selectedCity)}
-                            <span className={`text-sm ${
-                              selectedCity.price === 0 
-                                ? (isDark ? 'text-green-400' : 'text-green-600')
-                                : (isDark ? 'text-blue-300' : 'text-blue-600')
-                            }`}>
+                            <span className={`text-sm ${selectedCity.price === 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-blue-300' : 'text-blue-600')}`}>
                               {selectedCity.price === 0 ? t.order.freeDeliveryLabel : `${selectedCity.price.toLocaleString()} сум`}
                             </span>
                           </span>
@@ -427,34 +331,13 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                       </span>
                       <ChevronDown className={`w-5 h-5 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
-
-                    {/* Dropdown */}
                     {isCityDropdownOpen && (
-                      <div className={`absolute z-10 w-full mt-2 rounded-xl border shadow-xl overflow-hidden ${
-                        isDark 
-                          ? 'bg-slate-800 border-white/20' 
-                          : 'bg-white border-blue-200'
-                      }`}>
+                      <div className={`absolute z-10 w-full mt-2 rounded-xl border shadow-xl overflow-hidden ${isDark ? 'bg-slate-800 border-white/20' : 'bg-white border-blue-200'}`}>
                         {cities.map(city => (
-                          <button
-                            key={city.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCity(city);
-                              setIsCityDropdownOpen(false);
-                            }}
-                            className={`w-full px-4 py-3 text-left flex items-center justify-between transition-all ${
-                              selectedCity?.id === city.id
-                                ? (isDark ? 'bg-blue-500/30 text-white' : 'bg-blue-100 text-blue-900')
-                                : (isDark ? 'text-white hover:bg-white/10' : 'text-blue-900 hover:bg-blue-50')
-                            }`}
-                          >
+                          <button key={city.id} type="button" onClick={() => { setSelectedCity(city); setIsCityDropdownOpen(false); }}
+                            className={`w-full px-4 py-3 text-left flex items-center justify-between transition-all ${selectedCity?.id === city.id ? (isDark ? 'bg-blue-500/30 text-white' : 'bg-blue-100 text-blue-900') : (isDark ? 'text-white hover:bg-white/10' : 'text-blue-900 hover:bg-blue-50')}`}>
                             <span>{getCityName(city)}</span>
-                            <span className={`text-sm font-medium ${
-                              city.price === 0 
-                                ? (isDark ? 'text-green-400' : 'text-green-600')
-                                : (isDark ? 'text-blue-300' : 'text-blue-600')
-                            }`}>
+                            <span className={`text-sm font-medium ${city.price === 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-blue-300' : 'text-blue-600')}`}>
                               {city.price === 0 ? t.order.freeDeliveryLabel : `${city.price.toLocaleString()} сум`}
                             </span>
                           </button>
@@ -464,92 +347,66 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   </div>
                 </div>
 
-                {/* Address */}
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
-                    {t.order.address}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder={t.order.addressPlaceholder}
-                    className={inputClass}
-                  />
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>{t.order.address}</label>
+                  <input type="text" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder={t.order.addressPlaceholder} className={inputClass} />
                 </div>
 
-                {/* Comment */}
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>
-                    {t.order.comment}
-                  </label>
-                  <textarea
-                    value={formData.comment}
-                    onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-                    placeholder={t.order.commentPlaceholder}
-                    rows={2}
-                    className={inputClass}
-                  />
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>{t.order.comment}</label>
+                  <textarea value={formData.comment} onChange={(e) => setFormData({ ...formData, comment: e.target.value })} placeholder={t.order.commentPlaceholder} rows={2} className={inputClass} />
                 </div>
 
-                {/* Order Summary */}
                 <div className={`p-4 rounded-xl ${isDark ? 'bg-white/10' : 'bg-blue-50'}`}>
-                  <h3 className={`font-medium mb-3 ${isDark ? 'text-white' : 'text-blue-900'}`}>
-                    {t.cart.cart} ({cartItems.length})
-                  </h3>
+                  <h3 className={`font-medium mb-3 ${isDark ? 'text-white' : 'text-blue-900'}`}>{t.cart.cart} ({cartItems.length})</h3>
                   <div className="space-y-2 mb-3">
                     {cartItems.map(item => (
                       <div key={item.id} className="flex justify-between text-sm">
-                        <span className={isDark ? 'text-blue-200' : 'text-blue-700'}>
-                          {getProductName(item.product, language)} x{item.quantity}
-                        </span>
-                        <span className={isDark ? 'text-white' : 'text-blue-900'}>
-                          {(item.product.price * item.quantity).toLocaleString()} сум
-                        </span>
+                        <span className={isDark ? 'text-blue-200' : 'text-blue-700'}>{getProductName(item.product, language)} x{item.quantity}</span>
+                        <span className={isDark ? 'text-white' : 'text-blue-900'}>{(item.product.price * item.quantity).toLocaleString()} сум</span>
                       </div>
                     ))}
                   </div>
-                  
                   <div className={`pt-3 border-t space-y-2 ${isDark ? 'border-white/20' : 'border-blue-200'}`}>
                     <div className="flex justify-between text-sm">
                       <span className={isDark ? 'text-blue-200' : 'text-blue-700'}>{t.order.subtotal}</span>
                       <span className={isDark ? 'text-white' : 'text-blue-900'}>{total.toLocaleString()} сум</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className={isDark ? 'text-blue-200' : 'text-blue-700'}>
-                        {t.order.delivery} ({selectedCity ? getCityName(selectedCity) : ''})
-                      </span>
-                      <span className={deliveryCost === 0 
-                        ? (isDark ? 'text-green-400' : 'text-green-600') 
-                        : (isDark ? 'text-white' : 'text-blue-900')
-                      }>
+                      <span className={isDark ? 'text-blue-200' : 'text-blue-700'}>{t.order.delivery}</span>
+                      <span className={deliveryCost === 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-white' : 'text-blue-900')}>
                         {deliveryCost === 0 ? t.order.freeDeliveryLabel : `${deliveryCost.toLocaleString()} сум`}
                       </span>
                     </div>
-                    <div className={`pt-2 border-t flex justify-between font-bold ${
-                      isDark ? 'border-white/20 text-white' : 'border-blue-200 text-blue-900'
-                    }`}>
+                    <div className={`pt-2 border-t flex justify-between font-bold ${isDark ? 'border-white/20 text-white' : 'border-blue-200 text-blue-900'}`}>
                       <span>{t.cart.total}</span>
                       <span>{grandTotal.toLocaleString()} сум</span>
                     </div>
                   </div>
                 </div>
 
-                {error && (
-                  <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">
-                    {error}
+                {/* Payme Info */}
+                <div className={`p-4 rounded-xl flex items-center gap-3 ${isDark ? 'bg-cyan-500/20 border border-cyan-500/30' : 'bg-cyan-50 border border-cyan-200'}`}>
+                  <CreditCard className={`w-6 h-6 flex-shrink-0 ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`} />
+                  <div className="flex-1">
+                    <p className={`text-sm font-medium ${isDark ? 'text-cyan-300' : 'text-cyan-700'}`}>
+                      {language === 'ru' ? 'Оплата онлайн' : 'Onlayn tolov'}
+                    </p>
+                    <p className={`text-xs ${isDark ? 'text-cyan-400/70' : 'text-cyan-600'}`}>
+                      {language === 'ru' ? 'Безопасно через Payme' : 'Payme orqali xavfsiz'}
+                    </p>
                   </div>
-                )}
+                  <img src="https://cdn.payme.uz/logo/payme_color.svg" alt="Payme" className="h-6" />
+                </div>
+
+                {error && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">{error}</div>}
               </div>
 
-              {/* Submit Button */}
               <div className={`p-4 border-t flex-shrink-0 ${isDark ? 'border-white/10' : 'border-blue-200'}`}>
-                <button
-                  onClick={handleSubmitOrder}
-                  disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all"
-                >
-                  {isSubmitting ? t.order.submitting : t.order.submit}
+                <button onClick={handleSubmitOrder} disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  {isSubmitting ? (language === 'ru' ? 'Обработка...' : 'Jarayonda...') : (language === 'ru' ? `Оплатить ${grandTotal.toLocaleString()} сум` : `${grandTotal.toLocaleString()} som tolash`)}
                 </button>
               </div>
             </>
@@ -558,10 +415,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
           {/* CART VIEW */}
           {view === 'cart' && (
             <>
-              {/* Header */}
-              <div className={`flex items-center justify-between p-4 border-b flex-shrink-0 ${
-                isDark ? 'border-white/10' : 'border-blue-200'
-              }`}>
+              <div className={`flex items-center justify-between p-4 border-b flex-shrink-0 ${isDark ? 'border-white/10' : 'border-blue-200'}`}>
                 <div className="flex items-center space-x-3">
                   <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-xl shadow-lg">
                     <ShoppingBag className="w-5 h-5 text-white" />
@@ -571,25 +425,15 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                     <p className={`text-xs ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>{cartItems.length} {t.cart.items}</p>
                   </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className={`backdrop-blur-xl border p-2 rounded-xl transition-all duration-200 ${
-                    isDark 
-                      ? 'bg-white/10 hover:bg-white/20 active:bg-white/30 border-white/20' 
-                      : 'bg-blue-100 hover:bg-blue-200 active:bg-blue-300 border-blue-300'
-                  }`}
-                >
+                <button onClick={onClose} className={`backdrop-blur-xl border p-2 rounded-xl transition-all duration-200 ${isDark ? 'bg-white/10 hover:bg-white/20 active:bg-white/30 border-white/20' : 'bg-blue-100 hover:bg-blue-200 active:bg-blue-300 border-blue-300'}`}>
                   <X className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-800'}`} />
                 </button>
               </div>
 
-              {/* Cart Items */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3 overscroll-contain">
                 {cartItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                    <div className={`backdrop-blur-xl border rounded-full p-6 mb-4 ${
-                      isDark ? 'bg-white/5 border-white/10' : 'bg-blue-100 border-blue-300'
-                    }`}>
+                    <div className={`backdrop-blur-xl border rounded-full p-6 mb-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-blue-100 border-blue-300'}`}>
                       <ShoppingBag className={`w-12 h-12 ${isDark ? 'text-blue-300/50' : 'text-blue-500'}`} />
                     </div>
                     <h3 className={`text-lg font-semibold mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>{t.cart.emptyCart}</h3>
@@ -597,71 +441,23 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   </div>
                 ) : (
                   cartItems.map(item => (
-                    <div 
-                      key={item.id} 
-                      className={`backdrop-blur-xl border rounded-xl p-3 shadow-lg ${
-                        isDark 
-                          ? 'bg-white/10 border-white/20' 
-                          : 'bg-white border-blue-200 shadow-blue-100'
-                      }`}
-                    >
+                    <div key={item.id} className={`backdrop-blur-xl border rounded-xl p-3 shadow-lg ${isDark ? 'bg-white/10 border-white/20' : 'bg-white border-blue-200 shadow-blue-100'}`}>
                       <div className="flex gap-3">
-                        <img
-                          src={item.product.image_url}
-                          alt={getProductName(item.product, language)}
-                          className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg shadow-lg flex-shrink-0"
-                        />
+                        <img src={item.product.image_url} alt={getProductName(item.product, language)} className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg shadow-lg flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-medium mb-1 line-clamp-2 text-sm leading-tight ${
-                            isDark ? 'text-white' : 'text-blue-900'
-                          }`}>
-                            {getProductName(item.product, language)}
-                          </h3>
-                          <p className={`font-bold text-sm mb-2 ${isDark ? 'text-blue-100' : 'text-blue-700'}`}>
-                            {item.product.price.toLocaleString('uz-UZ')} UZS
-                          </p>
-
+                          <h3 className={`font-medium mb-1 line-clamp-2 text-sm leading-tight ${isDark ? 'text-white' : 'text-blue-900'}`}>{getProductName(item.product, language)}</h3>
+                          <p className={`font-bold text-sm mb-2 ${isDark ? 'text-blue-100' : 'text-blue-700'}`}>{item.product.price.toLocaleString('uz-UZ')} UZS</p>
                           <div className="flex items-center justify-between">
-                            <div className={`flex items-center border rounded-lg ${
-                              isDark 
-                                ? 'bg-white/10 border-white/20' 
-                                : 'bg-blue-50 border-blue-300'
-                            }`}>
-                              <button
-                                onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
-                                className={`p-2 rounded-l-lg transition-colors ${
-                                  isDark 
-                                    ? 'hover:bg-white/20 active:bg-white/30' 
-                                    : 'hover:bg-blue-200 active:bg-blue-300'
-                                }`}
-                              >
+                            <div className={`flex items-center border rounded-lg ${isDark ? 'bg-white/10 border-white/20' : 'bg-blue-50 border-blue-300'}`}>
+                              <button onClick={() => onUpdateQuantity(item.id, item.quantity - 1)} className={`p-2 rounded-l-lg transition-colors ${isDark ? 'hover:bg-white/20 active:bg-white/30' : 'hover:bg-blue-200 active:bg-blue-300'}`}>
                                 <Minus className={`w-4 h-4 ${isDark ? 'text-white' : 'text-blue-800'}`} />
                               </button>
-                              <span className={`font-bold px-4 text-sm min-w-[40px] text-center ${
-                                isDark ? 'text-white' : 'text-blue-900'
-                              }`}>
-                                {item.quantity}
-                              </span>
-                              <button
-                                onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                                className={`p-2 rounded-r-lg transition-colors ${
-                                  isDark 
-                                    ? 'hover:bg-white/20 active:bg-white/30' 
-                                    : 'hover:bg-blue-200 active:bg-blue-300'
-                                }`}
-                              >
+                              <span className={`font-bold px-4 text-sm min-w-[40px] text-center ${isDark ? 'text-white' : 'text-blue-900'}`}>{item.quantity}</span>
+                              <button onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className={`p-2 rounded-r-lg transition-colors ${isDark ? 'hover:bg-white/20 active:bg-white/30' : 'hover:bg-blue-200 active:bg-blue-300'}`}>
                                 <Plus className={`w-4 h-4 ${isDark ? 'text-white' : 'text-blue-800'}`} />
                               </button>
                             </div>
-
-                            <button
-                              onClick={() => onRemoveItem(item.id)}
-                              className={`p-2 rounded-lg transition-colors ${
-                                isDark 
-                                  ? 'hover:bg-red-500/20 active:bg-red-500/30' 
-                                  : 'hover:bg-red-100 active:bg-red-200'
-                              }`}
-                            >
+                            <button onClick={() => onRemoveItem(item.id)} className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-red-500/20 active:bg-red-500/30' : 'hover:bg-red-100 active:bg-red-200'}`}>
                               <Trash2 className={`w-4 h-4 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
                             </button>
                           </div>
@@ -672,26 +468,20 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                 )}
               </div>
 
-              {/* Footer */}
               {cartItems.length > 0 && (
-                <div className={`border-t p-4 space-y-4 flex-shrink-0 ${
-                  isDark 
-                    ? 'border-white/10 bg-gradient-to-t from-blue-950/50' 
-                    : 'border-blue-200 bg-gradient-to-t from-blue-100/80'
-                }`}>
+                <div className={`border-t p-4 space-y-3 flex-shrink-0 ${isDark ? 'border-white/10 bg-gradient-to-t from-blue-950/50' : 'border-blue-200 bg-gradient-to-t from-blue-100/80'}`}>
                   <div className="flex justify-between items-center">
                     <span className={`text-base font-medium ${isDark ? 'text-blue-200' : 'text-blue-800'}`}>{t.cart.total}</span>
-                    <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-blue-900'}`}>
-                      {total.toLocaleString('uz-UZ')} UZS
-                    </span>
+                    <span className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-blue-900'}`}>{total.toLocaleString('uz-UZ')} UZS</span>
                   </div>
-
-                  <button 
-                    onClick={handleCheckout}
-                    className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 text-white font-bold py-3.5 rounded-xl shadow-2xl hover:shadow-blue-500/50 transition-all duration-200 text-sm"
-                  >
+                  <button onClick={handleCheckout} className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-3.5 rounded-xl shadow-2xl transition-all duration-200 text-sm flex items-center justify-center gap-2">
+                    <CreditCard className="w-5 h-5" />
                     {t.cart.checkout}
                   </button>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className={`text-xs ${isDark ? 'text-blue-300/60' : 'text-blue-600'}`}>{language === 'ru' ? 'Оплата через' : 'Tolov'}</span>
+                    <img src="https://cdn.payme.uz/logo/payme_color.svg" alt="Payme" className="h-4" />
+                  </div>
                 </div>
               )}
             </>
