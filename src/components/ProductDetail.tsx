@@ -22,10 +22,19 @@ export function ProductDetail({ product, isOpen, onClose, onAddToCart }: Product
   const displayName = language === 'ru' && product.name_ru ? product.name_ru : product.name;
   const displayDescription = language === 'ru' && product.description_ru ? product.description_ru : product.description;
   
-  // ИСПРАВЛЕНО: Показываем specifications если specifications_ru пустой
+  // Получаем характеристики - объединяем оба языка
   const specsRu = product.specifications_ru as Record<string, string> || {};
   const specsUz = product.specifications as Record<string, string> || {};
-  const specs = (language === 'ru' && Object.keys(specsRu).length > 0) ? specsRu : specsUz;
+  
+  // Выбираем нужные характеристики по языку
+  let specs: Record<string, string> = {};
+  if (language === 'ru') {
+    // Для русского: если есть specifications_ru - используем, иначе specifications
+    specs = Object.keys(specsRu).length > 0 ? specsRu : specsUz;
+  } else {
+    // Для узбекского: если есть specifications - используем, иначе specifications_ru
+    specs = Object.keys(specsUz).length > 0 ? specsUz : specsRu;
+  }
   
   // Получаем массив изображений
   const images = product.images && product.images.length > 0 
