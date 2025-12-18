@@ -226,3 +226,16 @@ export async function createProductFromImprosoft(data: {
     body: JSON.stringify(data),
   });
 }
+export interface PaymentResponse {
+  success: boolean;
+  payment_url: string;
+  order_id: string;
+  amount: number;
+}
+
+export async function createPayment(orderId: string, amount: number): Promise<PaymentResponse> {
+  return request('/create-payment', {
+    method: 'POST',
+    body: JSON.stringify({ order_id: orderId, amount }),
+  });
+}
