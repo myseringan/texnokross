@@ -13,7 +13,6 @@ export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCard
   const { t, language } = useLanguage();
   const { isDark } = useTheme();
 
-  // Получаем название и описание на нужном языке
   const displayName = language === 'ru' && product.name_ru ? product.name_ru : product.name;
   const displayDescription = language === 'ru' && product.description_ru ? product.description_ru : product.description;
   const specs = language === 'ru' && product.specifications_ru 
@@ -32,79 +31,81 @@ export function ProductCard({ product, onAddToCart, onViewDetails }: ProductCard
           ? 'bg-white/10 border-white/20 hover:shadow-blue-500/20' 
           : 'bg-white border-blue-200 hover:shadow-blue-300/50 shadow-blue-100'
       }`}>
-        {/* Image */}
-        <div className={`relative h-36 sm:h-48 lg:h-64 overflow-hidden ${
-          isDark ? 'bg-gradient-to-br from-slate-800 to-slate-900' : 'bg-gradient-to-br from-blue-50 to-white'
-        }`}>
-          <img
-            src={product.images?.[0] || product.image_url}
-            alt={displayName}
-            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
-          />
-          <div className={`absolute inset-0 ${
-            isDark ? 'bg-gradient-to-t from-slate-900/80 via-transparent to-transparent' : 'bg-gradient-to-t from-white/40 via-transparent to-transparent'
-          }`}></div>
-
-          {/* Image count indicator */}
-          {product.images && product.images.length > 1 && (
-            <div className={`absolute top-2 sm:top-3 left-2 sm:left-3 backdrop-blur-xl px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-xs font-medium flex items-center gap-1 ${
-              isDark ? 'bg-black/50 text-white' : 'bg-white/80 text-gray-700'
-            }`}>
-              <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              {product.images.length}
-            </div>
-          )}
-
-          {product.in_stock && (
-            <div className="absolute top-2 sm:top-3 right-2 sm:right-3 backdrop-blur-xl bg-green-500/90 border border-green-400/30 text-white text-[9px] sm:text-xs font-semibold px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-full flex items-center space-x-1 shadow-xl">
-              <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-4 lg:h-4" />
-              <span className="hidden sm:inline">{t.productCard.inStock}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="p-3 sm:p-4 lg:p-6">
-          <h3 className={`text-sm sm:text-base lg:text-xl font-bold mb-1 sm:mb-1.5 lg:mb-2 line-clamp-2 transition-colors ${
-            isDark 
-              ? 'text-white group-hover:text-blue-300' 
-              : 'text-blue-900 group-hover:text-blue-600'
+        
+        {/* Кликабельная область - изображение и инфо */}
+        <div 
+          onClick={() => onViewDetails(product)}
+          className="cursor-pointer"
+        >
+          {/* Image */}
+          <div className={`relative h-36 sm:h-48 lg:h-64 overflow-hidden ${
+            isDark ? 'bg-gradient-to-br from-slate-800 to-slate-900' : 'bg-gradient-to-br from-blue-50 to-white'
           }`}>
-            {displayName}
-          </h3>
+            <img
+              src={product.images?.[0] || product.image_url}
+              alt={displayName}
+              className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+            />
+            <div className={`absolute inset-0 ${
+              isDark ? 'bg-gradient-to-t from-slate-900/80 via-transparent to-transparent' : 'bg-gradient-to-t from-white/40 via-transparent to-transparent'
+            }`}></div>
 
-          <p className={`text-xs sm:text-sm mb-2 sm:mb-3 lg:mb-4 line-clamp-2 ${
-            isDark ? 'text-blue-100/70' : 'text-blue-700'
-          }`}>
-            {displayDescription}
-          </p>
-
-          {/* Specs - Hidden on mobile */}
-          <div className="hidden sm:block space-y-1 lg:space-y-2 mb-3 lg:mb-4">
-            {specEntries.map(([key, value]) => (
-              <div key={key} className="flex justify-between text-xs lg:text-sm">
-                <span className={isDark ? 'text-blue-200/60' : 'text-blue-600'}>{key}:</span>
-                <span className={`font-medium ${isDark ? 'text-blue-100' : 'text-blue-800'}`}>{value}</span>
+            {product.images && product.images.length > 1 && (
+              <div className={`absolute top-2 sm:top-3 left-2 sm:left-3 backdrop-blur-xl px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-xs font-medium flex items-center gap-1 ${
+                isDark ? 'bg-black/50 text-white' : 'bg-white/80 text-gray-700'
+              }`}>
+                <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {product.images.length}
               </div>
-            ))}
+            )}
+
+            {product.in_stock && (
+              <div className="absolute top-2 sm:top-3 right-2 sm:right-3 backdrop-blur-xl bg-green-500/90 border border-green-400/30 text-white text-[9px] sm:text-xs font-semibold px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 rounded-full flex items-center space-x-1 shadow-xl">
+                <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 lg:w-4 lg:h-4" />
+                <span className="hidden sm:inline">{t.productCard.inStock}</span>
+              </div>
+            )}
           </div>
 
-          {/* Price */}
-          <div className="flex items-center justify-between mb-2 sm:mb-3 lg:mb-4">
-            <div>
+          {/* Content - тоже кликабельный */}
+          <div className="p-3 sm:p-4 lg:p-6 pb-0 sm:pb-0 lg:pb-0">
+            <h3 className={`text-sm sm:text-base lg:text-xl font-bold mb-1 sm:mb-1.5 lg:mb-2 line-clamp-2 transition-colors ${
+              isDark 
+                ? 'text-white group-hover:text-blue-300' 
+                : 'text-blue-900 group-hover:text-blue-600'
+            }`}>
+              {displayName}
+            </h3>
+
+            <p className={`text-xs sm:text-sm mb-2 sm:mb-3 lg:mb-4 line-clamp-2 ${
+              isDark ? 'text-blue-100/70' : 'text-blue-700'
+            }`}>
+              {displayDescription}
+            </p>
+
+            <div className="hidden sm:block space-y-1 lg:space-y-2 mb-3 lg:mb-4">
+              {specEntries.map(([key, value]) => (
+                <div key={key} className="flex justify-between text-xs lg:text-sm">
+                  <span className={isDark ? 'text-blue-200/60' : 'text-blue-600'}>{key}:</span>
+                  <span className={`font-medium ${isDark ? 'text-blue-100' : 'text-blue-800'}`}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mb-2 sm:mb-3 lg:mb-4">
               <div className={`text-base sm:text-xl lg:text-2xl xl:text-3xl font-bold ${
-                isDark 
-                  ? 'text-white' 
-                  : 'text-blue-900'
+                isDark ? 'text-white' : 'text-blue-900'
               }`}>
                 {product.price.toLocaleString('ru-RU')} сўм
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Buttons */}
+        {/* Кнопки - отдельно, не кликабельные на открытие */}
+        <div className="p-3 sm:p-4 lg:p-6 pt-0 sm:pt-0 lg:pt-0">
           <div className="flex gap-2 sm:gap-3">
             <button
               onClick={() => onViewDetails(product)}
