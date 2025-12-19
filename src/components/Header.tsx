@@ -33,6 +33,7 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
         : 'bg-gradient-to-r from-white/95 via-blue-50/90 to-white/95 border-blue-200/50'
     }`}>
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        {/* Высота header: h-16 (64px) mobile, h-20 (80px) sm, h-24 (96px) md+ */}
         <div className="flex items-center justify-between h-16 sm:h-20 md:h-24">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 sm:space-x-3 group">
@@ -40,39 +41,39 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
               <div className={`absolute inset-0 blur-xl opacity-50 group-hover:opacity-70 transition-opacity ${
                 isDark ? 'bg-blue-400' : 'bg-blue-500'
               }`}></div>
-              <Logo className={`relative w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 transform group-hover:scale-110 transition-transform drop-shadow-lg ${
+              <Logo className={`relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 transform group-hover:scale-110 transition-transform drop-shadow-lg ${
                 isDark ? 'text-blue-400' : 'text-blue-600'
               }`} />
             </div>
             <div>
-              <h1 className={`text-xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent drop-shadow-lg ${
+              <h1 className={`text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold bg-clip-text text-transparent drop-shadow-lg ${
                 isDark 
                   ? 'bg-gradient-to-r from-blue-100 via-white to-blue-100' 
                   : 'bg-gradient-to-r from-blue-700 via-blue-900 to-blue-700'
               }`}>
                 Texnokross
               </h1>
-              <p className={`hidden sm:block text-xs md:text-sm tracking-wider ${
+              <p className={`hidden sm:block text-[10px] md:text-xs lg:text-sm tracking-wider ${
                 isDark ? 'text-blue-200/80' : 'text-blue-600/80'
               }`}>{t.header.subtitle}</p>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className={`relative backdrop-blur-xl border rounded-2xl p-3 transition-all duration-300 shadow-xl hover:scale-105 ${
+              className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl p-2.5 lg:p-3 transition-all duration-300 shadow-xl hover:scale-105 ${
                 isDark 
                   ? 'bg-white/10 hover:bg-white/20 border-white/20' 
                   : 'bg-blue-100/50 hover:bg-blue-200/50 border-blue-200'
               }`}
             >
               {isDark ? (
-                <Sun className="w-5 h-5 text-yellow-300" strokeWidth={2} />
+                <Sun className="w-4 h-4 lg:w-5 lg:h-5 text-yellow-300" strokeWidth={2} />
               ) : (
-                <Moon className="w-5 h-5 text-blue-700" strokeWidth={2} />
+                <Moon className="w-4 h-4 lg:w-5 lg:h-5 text-blue-700" strokeWidth={2} />
               )}
             </button>
 
@@ -82,54 +83,54 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
                 {isAdmin && (
                   <Link
                     to="/admin"
-                    className={`relative backdrop-blur-xl border rounded-2xl px-4 py-3 transition-all duration-300 shadow-xl hover:scale-105 ${
+                    className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl px-3 lg:px-4 py-2.5 lg:py-3 transition-all duration-300 shadow-xl hover:scale-105 ${
                       isDark 
                         ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 border-purple-400/30' 
                         : 'bg-gradient-to-r from-purple-100 to-blue-100 hover:from-purple-200 hover:to-blue-200 border-purple-300'
                     }`}
                   >
-                    <span className={`font-medium ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
+                    <span className={`font-medium text-sm lg:text-base ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
                       {t.header?.adminPanel || "Admin"}
                     </span>
                   </Link>
                 )}
                 <button
                   onClick={logout}
-                  className={`relative backdrop-blur-xl border rounded-2xl p-3 transition-all duration-300 shadow-xl hover:scale-105 ${
+                  className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl p-2.5 lg:p-3 transition-all duration-300 shadow-xl hover:scale-105 ${
                     isDark 
                       ? 'bg-white/10 hover:bg-red-500/20 border-white/20' 
                       : 'bg-blue-100/50 hover:bg-red-100 border-blue-200'
                   }`}
                   title={t.header?.logout || "Chiqish"}
                 >
-                  <LogOut className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
+                  <LogOut className={`w-4 h-4 lg:w-5 lg:h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
                 </button>
               </div>
             ) : (
               <Link
                 to="/login"
-                className={`relative backdrop-blur-xl border rounded-2xl p-3 transition-all duration-300 shadow-xl hover:scale-105 ${
+                className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl p-2.5 lg:p-3 transition-all duration-300 shadow-xl hover:scale-105 ${
                   isDark 
                     ? 'bg-white/10 hover:bg-white/20 border-white/20' 
                     : 'bg-blue-100/50 hover:bg-blue-200/50 border-blue-200'
                 }`}
               >
-                <User className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
+                <User className={`w-4 h-4 lg:w-5 lg:h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
               </Link>
             )}
 
             {/* Language Switcher */}
             <div className="relative group">
-              <div className={`relative backdrop-blur-xl border rounded-2xl px-4 py-3 transition-all duration-300 shadow-xl ${
+              <div className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl px-3 lg:px-4 py-2.5 lg:py-3 transition-all duration-300 shadow-xl ${
                 isDark 
                   ? 'bg-white/10 hover:bg-white/20 border-white/20' 
                   : 'bg-blue-100/50 hover:bg-blue-200/50 border-blue-200'
               }`}>
                 <div className="flex items-center space-x-2">
-                  <Globe className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
+                  <Globe className={`w-4 h-4 lg:w-5 lg:h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
                   <button
                     onClick={() => setLanguage('uz')}
-                    className={`px-2 py-1 text-sm font-medium rounded transition-colors ${
+                    className={`px-1.5 lg:px-2 py-0.5 lg:py-1 text-xs lg:text-sm font-medium rounded transition-colors ${
                       language === 'uz'
                         ? isDark ? 'text-blue-300 bg-blue-500/20' : 'text-blue-700 bg-blue-200'
                         : isDark ? 'text-white/70 hover:text-white' : 'text-blue-600/70 hover:text-blue-700'
@@ -140,7 +141,7 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
                   <span className={isDark ? 'text-white/30' : 'text-blue-300'}>/</span>
                   <button
                     onClick={() => setLanguage('ru')}
-                    className={`px-2 py-1 text-sm font-medium rounded transition-colors ${
+                    className={`px-1.5 lg:px-2 py-0.5 lg:py-1 text-xs lg:text-sm font-medium rounded transition-colors ${
                       language === 'ru'
                         ? isDark ? 'text-blue-300 bg-blue-500/20' : 'text-blue-700 bg-blue-200'
                         : isDark ? 'text-white/70 hover:text-white' : 'text-blue-600/70 hover:text-blue-700'
@@ -154,14 +155,14 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
 
             {/* Shop Link */}
             <Link to="/categories" className="relative group">
-              <div className={`relative backdrop-blur-xl border rounded-2xl px-6 py-3 transition-all duration-300 shadow-xl transform hover:scale-105 ${
+              <div className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl px-4 lg:px-6 py-2.5 lg:py-3 transition-all duration-300 shadow-xl transform hover:scale-105 ${
                 isDark 
                   ? 'bg-white/10 hover:bg-white/20 border-white/20' 
                   : 'bg-blue-100/50 hover:bg-blue-200/50 border-blue-200'
               }`}>
                 <div className="flex items-center space-x-2">
-                  <span className={`font-medium ${isDark ? 'text-white' : 'text-blue-700'}`}>{t.header.toShop}</span>
-                  <ArrowRight className={`w-5 h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
+                  <span className={`font-medium text-sm lg:text-base ${isDark ? 'text-white' : 'text-blue-700'}`}>{t.header.toShop}</span>
+                  <ArrowRight className={`w-4 h-4 lg:w-5 lg:h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
                 </div>
               </div>
             </Link>
@@ -169,15 +170,15 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
             {/* Cart Button - Hidden on Home Page */}
             {!isHomePage && (
               <button onClick={onCartClick} className="relative group">
-                <div className={`relative backdrop-blur-xl border rounded-2xl px-6 py-3 transition-all duration-300 shadow-xl transform hover:scale-105 ${
+                <div className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl px-4 lg:px-6 py-2.5 lg:py-3 transition-all duration-300 shadow-xl transform hover:scale-105 ${
                   isDark 
                     ? 'bg-white/10 hover:bg-white/20 border-white/20' 
                     : 'bg-blue-100/50 hover:bg-blue-200/50 border-blue-200'
                 }`}>
-                  <div className="flex items-center space-x-3">
-                    <ShoppingCart className={`w-6 h-6 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
+                  <div className="flex items-center space-x-2 lg:space-x-3">
+                    <ShoppingCart className={`w-5 h-5 lg:w-6 lg:h-6 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
                     {cartItemCount > 0 && (
-                      <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-bold px-3 py-1 rounded-full shadow-lg">
+                      <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs lg:text-sm font-bold px-2 lg:px-3 py-0.5 lg:py-1 rounded-full shadow-lg">
                         {cartItemCount}
                       </span>
                     )}

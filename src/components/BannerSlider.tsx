@@ -137,10 +137,10 @@ export function BannerSlider({ isDark }: BannerSliderProps) {
   };
 
   return (
-    <div className="relative w-full mb-6 sm:mb-12">
+    <div className="relative w-full mb-4 sm:mb-8 lg:mb-12">
       {/* Main Banner */}
       <div 
-        className={`relative overflow-hidden rounded-xl sm:rounded-3xl shadow-2xl ${
+        className={`relative overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl shadow-2xl ${
           isDark ? 'shadow-blue-500/20' : 'shadow-blue-300/30'
         }`}
         onTouchStart={handleTouchStart}
@@ -159,20 +159,20 @@ export function BannerSlider({ isDark }: BannerSliderProps) {
         {/* Gradient Overlay */}
         <div className={`absolute inset-0 bg-gradient-to-r ${getGradient(currentBanner.type)}`}></div>
 
-        {/* Content - Fixed height for mobile */}
-        <div className="relative z-10 px-4 py-6 sm:px-12 sm:py-16 min-h-[180px] sm:min-h-[280px] flex flex-col justify-center">
+        {/* Content - Responsive height */}
+        <div className="relative z-10 px-4 py-5 sm:px-8 sm:py-10 lg:px-12 lg:py-16 min-h-[160px] sm:min-h-[220px] lg:min-h-[280px] flex flex-col justify-center">
           {/* Badge */}
-          <div className="inline-flex self-start px-2.5 py-1 sm:px-4 sm:py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-[10px] sm:text-sm font-medium mb-2 sm:mb-4">
+          <div className="inline-flex self-start px-2 py-0.5 sm:px-3 sm:py-1 lg:px-4 lg:py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-[10px] sm:text-xs lg:text-sm font-medium mb-2 sm:mb-3 lg:mb-4">
             {getBadge(currentBanner.type)}
           </div>
 
           {/* Title */}
-          <h2 className="text-xl sm:text-4xl md:text-5xl font-bold text-white mb-1.5 sm:mb-3 drop-shadow-lg leading-tight line-clamp-2">
+          <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-1 sm:mb-2 lg:mb-3 drop-shadow-lg leading-tight line-clamp-2">
             {currentBanner.title}
           </h2>
 
           {/* Subtitle */}
-          <p className="text-white/90 text-xs sm:text-lg md:text-xl max-w-xl drop-shadow line-clamp-2 leading-snug">
+          <p className="text-white/90 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl max-w-xl drop-shadow line-clamp-2 leading-snug">
             {currentBanner.subtitle}
           </p>
 
@@ -180,7 +180,7 @@ export function BannerSlider({ isDark }: BannerSliderProps) {
           {currentBanner.link && (
             <a
               href={currentBanner.link}
-              className="inline-block self-start mt-3 sm:mt-6 px-4 py-2 sm:px-8 sm:py-3 bg-white text-gray-900 font-semibold rounded-lg sm:rounded-xl hover:bg-gray-100 transition-all shadow-lg text-xs sm:text-base"
+              className="inline-block self-start mt-3 sm:mt-4 lg:mt-6 px-3 py-1.5 sm:px-6 sm:py-2 lg:px-8 lg:py-3 bg-white text-gray-900 font-semibold rounded-lg sm:rounded-xl hover:bg-gray-100 transition-all shadow-lg text-xs sm:text-sm lg:text-base"
             >
               Batafsil →
             </a>
@@ -192,31 +192,30 @@ export function BannerSlider({ isDark }: BannerSliderProps) {
           <>
             <button
               onClick={goToPrev}
-              className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/20 hover:bg-white/40 active:bg-white/50 backdrop-blur-sm rounded-full items-center justify-center text-white transition-all cursor-pointer"
+              className="hidden sm:flex absolute left-3 lg:left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 lg:w-12 lg:h-12 bg-white/20 hover:bg-white/40 active:bg-white/50 backdrop-blur-sm rounded-full items-center justify-center text-white transition-all cursor-pointer"
             >
-              <ChevronLeft className="w-6 h-6" />
+              <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6" />
             </button>
             <button
               onClick={goToNext}
-              className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/20 hover:bg-white/40 active:bg-white/50 backdrop-blur-sm rounded-full items-center justify-center text-white transition-all cursor-pointer"
+              className="hidden sm:flex absolute right-3 lg:right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 lg:w-12 lg:h-12 bg-white/20 hover:bg-white/40 active:bg-white/50 backdrop-blur-sm rounded-full items-center justify-center text-white transition-all cursor-pointer"
             >
-              <ChevronRight className="w-6 h-6" />
+              <ChevronRight className="w-5 h-5 lg:w-6 lg:h-6" />
             </button>
           </>
         )}
 
         {/* Dots indicator */}
         {banners.length > 1 && (
-          <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2">
+          <div className="absolute bottom-2 sm:bottom-3 lg:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 sm:gap-1.5 lg:gap-2">
             {banners.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                style={{ height: '6px' }}
-                className={`rounded-full transition-all cursor-pointer sm:h-3 ${
+                className={`h-1.5 sm:h-2 lg:h-3 rounded-full transition-all cursor-pointer ${
                   index === currentIndex 
-                    ? 'bg-white w-4 sm:w-8' 
-                    : 'bg-white/50 hover:bg-white/70 w-1.5 sm:w-3'
+                    ? 'bg-white w-4 sm:w-6 lg:w-8' 
+                    : 'bg-white/50 hover:bg-white/70 w-1.5 sm:w-2 lg:w-3'
                 }`}
               />
             ))}
