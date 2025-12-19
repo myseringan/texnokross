@@ -52,7 +52,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${
+    <div className={`min-h-screen pt-16 sm:pt-20 md:pt-24 flex items-center justify-center p-4 transition-colors duration-300 ${
       isDark 
         ? 'bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900' 
         : 'bg-gradient-to-br from-blue-100 via-white to-blue-50'
@@ -61,7 +61,7 @@ export function LoginPage() {
         {/* Back Button */}
         <button
           onClick={() => navigate('/')}
-          className={`mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 ${
+          className={`mb-4 sm:mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 ${
             isDark 
               ? 'text-blue-300 hover:bg-white/10' 
               : 'text-blue-600 hover:bg-blue-100'
@@ -72,17 +72,17 @@ export function LoginPage() {
         </button>
 
         {/* Card */}
-        <div className={`backdrop-blur-xl border rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl ${
+        <div className={`backdrop-blur-xl border rounded-2xl sm:rounded-3xl p-5 sm:p-6 lg:p-8 shadow-2xl ${
           isDark 
             ? 'bg-white/10 border-white/20' 
             : 'bg-white border-blue-200'
         }`}>
           {/* Logo */}
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-xl">
-              <Phone className="w-8 h-8 text-white" />
+          <div className="text-center mb-5 sm:mb-6">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-xl">
+              <Phone className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
             </div>
-            <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <h1 className={`text-xl sm:text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {t.auth?.userLogin || "Kirish / Ro'yxatdan o'tish"}
             </h1>
             <p className={`mt-2 text-sm ${isDark ? 'text-blue-200/70' : 'text-gray-600'}`}>
@@ -98,18 +98,18 @@ export function LoginPage() {
                 {t.auth?.phone || "Telefon raqam"}
               </label>
               <div className="relative">
-                <div className={`absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 ${
+                <div className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 sm:gap-2 ${
                   isDark ? 'text-blue-300' : 'text-gray-500'
                 }`}>
-                  <Phone className="w-5 h-5" />
-                  <span className="text-sm font-medium">+998</span>
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-xs sm:text-sm font-medium">+998</span>
                 </div>
                 <input
                   type="tel"
                   value={phone}
                   onChange={handlePhoneChange}
                   placeholder="90 123 45 67"
-                  className={`w-full pl-28 pr-4 py-3.5 rounded-xl border text-base transition-all duration-200 ${
+                  className={`w-full pl-24 sm:pl-28 pr-4 py-3 sm:py-3.5 rounded-xl border text-sm sm:text-base transition-all duration-200 ${
                     isDark
                       ? 'bg-white/10 border-white/20 text-white placeholder-blue-300/50 focus:border-blue-400 focus:bg-white/15'
                       : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white'
@@ -125,7 +125,7 @@ export function LoginPage() {
                 {t.auth?.password || "Parol"}
               </label>
               <div className="relative">
-                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                <Lock className={`absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 ${
                   isDark ? 'text-blue-300' : 'text-gray-500'
                 }`} />
                 <input
@@ -133,7 +133,7 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className={`w-full pl-12 pr-12 py-3.5 rounded-xl border text-base transition-all duration-200 ${
+                  className={`w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-3.5 rounded-xl border text-sm sm:text-base transition-all duration-200 ${
                     isDark
                       ? 'bg-white/10 border-white/20 text-white placeholder-blue-300/50 focus:border-blue-400 focus:bg-white/15'
                       : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:bg-white'
@@ -144,11 +144,11 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className={`absolute right-4 top-1/2 -translate-y-1/2 ${
+                  className={`absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 ${
                     isDark ? 'text-blue-300 hover:text-white' : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                 </button>
               </div>
               <p className={`mt-2 text-xs ${isDark ? 'text-blue-200/60' : 'text-gray-500'}`}>
@@ -167,7 +167,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 text-white font-semibold py-3.5 rounded-xl shadow-xl hover:shadow-blue-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 active:from-blue-700 active:to-blue-800 text-white font-semibold py-3 sm:py-3.5 rounded-xl shadow-xl hover:shadow-blue-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {loading 
                 ? (t.auth?.loading || "Yuklanmoqda...")
