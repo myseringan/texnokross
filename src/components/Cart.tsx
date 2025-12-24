@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Trash2, ShoppingBag, CheckCircle, ArrowLeft, MapPin, ChevronDown, Phone, User, Lock, CreditCard, Loader2 } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, CheckCircle, ArrowLeft, MapPin, ChevronDown, Phone, User, Lock, CreditCard, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,7 +20,7 @@ const getProductName = (product: Product, language: string) => {
   return language === 'ru' && product.name_ru ? product.name_ru : product.name;
 };
 
-type CartView = 'cart' | 'login' | 'checkout' | 'processing' | 'success';
+type CartView = 'cart' | 'login' | 'checkout' | 'processing' | 'success' | 'error';
 
 interface City {
   id: string;
@@ -52,6 +52,8 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
     comment: '',
   });
   const [error, setError] = useState('');
+  const [paymentUrl, setPaymentUrl] = useState('');
+  const [orderId, setOrderId] = useState('');
 
   useEffect(() => {
     const loadCities = async () => {
@@ -75,6 +77,25 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
       }));
     }
   }, [user, isAuthenticated]);
+
+  // Проверяем URL параметры на статус оплаты
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment_status');
+    const orderIdParam = urlParams.get('order_id');
+    
+    if (paymentStatus && orderIdParam) {
+      setOrderId(orderIdParam);
+      if (paymentStatus === 'paid') {
+        setView('success');
+        onClearCart();
+      } else if (paymentStatus === 'cancelled' || paymentStatus === 'failed') {
+        setView('error');
+      }
+      // Очищаем URL параметры
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
   
   if (!isOpen) return null;
 
@@ -120,6 +141,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
     setView('cart');
     setError('');
     setLoginError('');
+    setPaymentUrl('');
   };
 
   const handleSubmitOrder = async () => {
@@ -158,22 +180,34 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
         grandTotal
       );
 
+      setOrderId(orderResponse.order.id);
       setView('processing');
 
-      const paymentResponse = await api.createPayment(orderResponse.order.id, grandTotal);
+      const returnUrl = `${window.location.origin}/?payment_status=paid&order_id=${orderResponse.order.id}`;
+      const paymentResponse = await api.createPayment(orderResponse.order.id, grandTotal, returnUrl);
       
       if (paymentResponse.payment_url) {
-        onClearCart();
-        window.location.href = paymentResponse.payment_url;
+        setPaymentUrl(paymentResponse.payment_url);
+        
+        // Автоматический редирект через 2 секунды
+        setTimeout(() => {
+          window.location.href = paymentResponse.payment_url;
+        }, 2000);
       } else {
-        throw new Error('No payment URL');
+        throw new Error('No payment URL received');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Order error:', err);
-      setError(language === 'ru' ? 'Ошибка при создании платежа' : 'Tolov yaratishda xatolik');
+      setError(err.message || (language === 'ru' ? 'Ошибка при создании платежа' : 'Tolov yaratishda xatolik'));
       setView('checkout');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleManualRedirect = () => {
+    if (paymentUrl) {
+      window.location.href = paymentUrl;
     }
   };
 
@@ -182,7 +216,14 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
     setView('cart');
     if (cities.length > 0) setSelectedCity(cities[0]);
     setFormData({ name: '', phone: '', address: '', comment: '' });
+    setPaymentUrl('');
+    setOrderId('');
     onClose();
+  };
+
+  const handleErrorRetry = () => {
+    setView('checkout');
+    setError('');
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl border transition-all outline-none ${
@@ -212,9 +253,26 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                 {language === 'ru' ? 'Переход к оплате...' : 'Tolovga otish...'}
               </h2>
               <p className={`mb-4 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
-                {language === 'ru' ? 'Подождите, идёт перенаправление на Payme' : 'Iltimos kuting, Payme ga yonaltirilmoqda'}
+                {language === 'ru' ? 'Вы будете перенаправлены на страницу оплаты Payme' : 'Siz Payme tolov sahifasiga yonaltirilasiz'}
               </p>
-              <img src="https://cdn.payme.uz/logo/payme_color.svg" alt="Payme" className="h-8 mt-4" />
+              
+              <div className={`p-4 rounded-xl mb-6 ${isDark ? 'bg-white/10' : 'bg-cyan-50'}`}>
+                <img src="https://cdn.payme.uz/logo/payme_color.svg" alt="Payme" className="h-10" />
+              </div>
+              
+              {paymentUrl && (
+                <button
+                  onClick={handleManualRedirect}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-medium rounded-xl shadow-lg transition-all"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                  {language === 'ru' ? 'Перейти к оплате' : 'Tolovga otish'}
+                </button>
+              )}
+              
+              <p className={`mt-4 text-sm ${isDark ? 'text-blue-200/50' : 'text-blue-500'}`}>
+                {language === 'ru' ? 'Заказ' : 'Buyurtma'}: #{orderId.slice(-6)}
+              </p>
             </div>
           )}
 
@@ -224,11 +282,60 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
               <div className={`p-6 rounded-full mb-6 ${isDark ? 'bg-green-500/20' : 'bg-green-100'}`}>
                 <CheckCircle className={`w-16 h-16 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
               </div>
-              <h2 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>{t.order.success}</h2>
-              <p className={`mb-8 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>{t.order.successMessage}</p>
-              <button onClick={handleSuccessClose} className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all">
+              <h2 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>
+                {language === 'ru' ? 'Оплата прошла успешно!' : 'Tolov muvaffaqiyatli amalga oshirildi!'}
+              </h2>
+              <p className={`mb-4 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
+                {language === 'ru' ? 'Ваш заказ оформлен. Мы свяжемся с вами в ближайшее время.' : 'Buyurtmangiz qabul qilindi. Tez orada siz bilan boglanamiz.'}
+              </p>
+              {orderId && (
+                <div className={`p-4 rounded-xl mb-6 ${isDark ? 'bg-white/10' : 'bg-green-50'}`}>
+                  <p className={`text-sm ${isDark ? 'text-green-300' : 'text-green-700'}`}>
+                    {language === 'ru' ? 'Номер заказа' : 'Buyurtma raqami'}: <span className="font-bold">#{orderId.slice(-6)}</span>
+                  </p>
+                </div>
+              )}
+              <button 
+                onClick={handleSuccessClose} 
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all"
+              >
                 {t.order.backToShopping}
               </button>
+            </div>
+          )}
+
+          {/* ERROR VIEW */}
+          {view === 'error' && (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+              <div className={`p-6 rounded-full mb-6 ${isDark ? 'bg-red-500/20' : 'bg-red-100'}`}>
+                <AlertCircle className={`w-16 h-16 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+              </div>
+              <h2 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>
+                {language === 'ru' ? 'Оплата не прошла' : 'Tolov amalga oshirilmadi'}
+              </h2>
+              <p className={`mb-6 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
+                {language === 'ru' 
+                  ? 'Произошла ошибка при оплате. Попробуйте ещё раз или выберите другой способ.' 
+                  : 'Tolovda xatolik yuz berdi. Qaytadan urinib koring.'}
+              </p>
+              <div className="flex gap-3 w-full">
+                <button 
+                  onClick={handleSuccessClose} 
+                  className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+                    isDark 
+                      ? 'bg-white/10 hover:bg-white/20 text-white' 
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {language === 'ru' ? 'Закрыть' : 'Yopish'}
+                </button>
+                <button 
+                  onClick={handleErrorRetry} 
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all"
+                >
+                  {language === 'ru' ? 'Повторить' : 'Qaytadan'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -357,6 +464,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   <textarea value={formData.comment} onChange={(e) => setFormData({ ...formData, comment: e.target.value })} placeholder={t.order.commentPlaceholder} rows={2} className={inputClass} />
                 </div>
 
+                {/* Order Summary */}
                 <div className={`p-4 rounded-xl ${isDark ? 'bg-white/10' : 'bg-blue-50'}`}>
                   <h3 className={`font-medium mb-3 ${isDark ? 'text-white' : 'text-blue-900'}`}>{t.cart.cart} ({cartItems.length})</h3>
                   <div className="space-y-2 mb-3">
@@ -390,23 +498,30 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   <CreditCard className={`w-6 h-6 flex-shrink-0 ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`} />
                   <div className="flex-1">
                     <p className={`text-sm font-medium ${isDark ? 'text-cyan-300' : 'text-cyan-700'}`}>
-                      {language === 'ru' ? 'Оплата онлайн' : 'Onlayn tolov'}
+                      {language === 'ru' ? 'Безопасная онлайн-оплата' : 'Xavfsiz onlayn tolov'}
                     </p>
                     <p className={`text-xs ${isDark ? 'text-cyan-400/70' : 'text-cyan-600'}`}>
-                      {language === 'ru' ? 'Безопасно через Payme' : 'Payme orqali xavfsiz'}
+                      Uzcard • HUMO • Visa • MasterCard
                     </p>
                   </div>
                   <img src="https://cdn.payme.uz/logo/payme_color.svg" alt="Payme" className="h-6" />
                 </div>
 
-                {error && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">{error}</div>}
+                {error && (
+                  <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    {error}
+                  </div>
+                )}
               </div>
 
               <div className={`p-4 border-t flex-shrink-0 ${isDark ? 'border-white/10' : 'border-blue-200'}`}>
                 <button onClick={handleSubmitOrder} disabled={isSubmitting}
                   className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
                   <CreditCard className="w-5 h-5" />
-                  {isSubmitting ? (language === 'ru' ? 'Обработка...' : 'Jarayonda...') : (language === 'ru' ? `Оплатить ${grandTotal.toLocaleString()} сум` : `${grandTotal.toLocaleString()} som tolash`)}
+                  {isSubmitting 
+                    ? (language === 'ru' ? 'Обработка...' : 'Jarayonda...') 
+                    : (language === 'ru' ? `Оплатить ${grandTotal.toLocaleString()} сум` : `${grandTotal.toLocaleString()} som tolash`)}
                 </button>
               </div>
             </>
