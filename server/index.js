@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,16 +24,32 @@ const BANNERS_FILE = path.join(DATA_DIR, 'banners.json');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const CITIES_FILE = path.join(DATA_DIR, 'cities.json');
+const TRANSACTIONS_FILE = path.join(DATA_DIR, 'transactions.json');
 
-// Telegram настройки (замени на свои)
+// Telegram настройки
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 
+// ==================== PAYME CONFIGURATION ====================
+// ВАЖНО: Замените на свои данные из личного кабинета Payme Business
+const PAYME_MERCHANT_ID = process.env.PAYME_MERCHANT_ID || ''; // ID мерчанта
+const PAYME_SECRET_KEY = process.env.PAYME_SECRET_KEY || ''; // Секретный ключ
+const PAYME_SECRET_KEY_TEST = process.env.PAYME_SECRET_KEY_TEST || ''; // Ключ для тестов
+const PAYME_TEST_MODE = process.env.PAYME_TEST_MODE === 'true'; // Тестовый режим
+
+// URL для чекаута
+const PAYME_CHECKOUT_URL = PAYME_TEST_MODE 
+  ? 'https://test.paycom.uz' 
+  : 'https://checkout.paycom.uz';
+
+// Таймаут для заказа (12 часов в миллисекундах)
+const ORDER_TIMEOUT = 12 * 60 * 60 * 1000;
+
 // Дефолтные настройки
 const DEFAULT_SETTINGS = {
-  deliveryPrice: 30000, // Сумма платной доставки в сумах
-  freeDeliveryRadius: 5, // Радиус бесплатной доставки в км
-  freeDeliveryCity: 'Navoiy', // Город бесплатной доставки
+  deliveryPrice: 30000,
+  freeDeliveryRadius: 5,
+  freeDeliveryCity: 'Navoiy',
 };
 
 // Дефолтные города
@@ -67,7 +84,8 @@ const DEFAULT_BANNERS = [
   },
 ];
 
-// Хелперы для чтения/записи
+// ==================== HELPERS ====================
+
 function readJSON(file, defaultData = []) {
   try {
     if (fs.existsSync(file)) {
@@ -90,165 +108,6 @@ function writeJSON(file, data) {
     return false;
   }
 }
-
-// ==================== PRODUCTS ====================
-
-// GET all products
-app.get('/api/products', (req, res) => {
-  const products = readJSON(PRODUCTS_FILE, []);
-  res.json(products);
-});
-
-// GET single product
-app.get('/api/products/:id', (req, res) => {
-  const products = readJSON(PRODUCTS_FILE, []);
-  const product = products.find(p => p.id === req.params.id);
-  if (product) {
-    res.json(product);
-  } else {
-    res.status(404).json({ error: 'Product not found' });
-  }
-});
-
-// POST new product
-app.post('/api/products', (req, res) => {
-  const products = readJSON(PRODUCTS_FILE, []);
-  const newProduct = {
-    ...req.body,
-    id: req.body.id || `prod_${Date.now()}`,
-    created_at: req.body.created_at || new Date().toISOString(),
-  };
-  products.unshift(newProduct);
-  writeJSON(PRODUCTS_FILE, products);
-  res.json(newProduct);
-});
-
-// PUT update product
-app.put('/api/products/:id', (req, res) => {
-  const products = readJSON(PRODUCTS_FILE, []);
-  const index = products.findIndex(p => p.id === req.params.id);
-  if (index !== -1) {
-    products[index] = { ...products[index], ...req.body };
-    writeJSON(PRODUCTS_FILE, products);
-    res.json(products[index]);
-  } else {
-    res.status(404).json({ error: 'Product not found' });
-  }
-});
-
-// DELETE product
-app.delete('/api/products/:id', (req, res) => {
-  let products = readJSON(PRODUCTS_FILE, []);
-  const initialLength = products.length;
-  products = products.filter(p => p.id !== req.params.id);
-  if (products.length < initialLength) {
-    writeJSON(PRODUCTS_FILE, products);
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ error: 'Product not found' });
-  }
-});
-
-// ==================== CATEGORIES ====================
-
-// GET all categories
-app.get('/api/categories', (req, res) => {
-  const categories = readJSON(CATEGORIES_FILE, DEFAULT_CATEGORIES);
-  res.json(categories);
-});
-
-// POST new category
-app.post('/api/categories', (req, res) => {
-  const categories = readJSON(CATEGORIES_FILE, DEFAULT_CATEGORIES);
-  const newCategory = {
-    ...req.body,
-    id: req.body.id || `cat_${Date.now()}`,
-    created_at: req.body.created_at || new Date().toISOString(),
-  };
-  categories.push(newCategory);
-  writeJSON(CATEGORIES_FILE, categories);
-  res.json(newCategory);
-});
-
-// PUT update category
-app.put('/api/categories/:id', (req, res) => {
-  const categories = readJSON(CATEGORIES_FILE, DEFAULT_CATEGORIES);
-  const index = categories.findIndex(c => c.id === req.params.id);
-  if (index !== -1) {
-    categories[index] = { ...categories[index], ...req.body };
-    writeJSON(CATEGORIES_FILE, categories);
-    res.json(categories[index]);
-  } else {
-    res.status(404).json({ error: 'Category not found' });
-  }
-});
-
-// DELETE category
-app.delete('/api/categories/:id', (req, res) => {
-  let categories = readJSON(CATEGORIES_FILE, DEFAULT_CATEGORIES);
-  const initialLength = categories.length;
-  categories = categories.filter(c => c.id !== req.params.id);
-  if (categories.length < initialLength) {
-    writeJSON(CATEGORIES_FILE, categories);
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ error: 'Category not found' });
-  }
-});
-
-// ==================== BANNERS ====================
-
-// GET all banners
-app.get('/api/banners', (req, res) => {
-  const banners = readJSON(BANNERS_FILE, DEFAULT_BANNERS);
-  res.json(banners);
-});
-
-// POST new banner
-app.post('/api/banners', (req, res) => {
-  const banners = readJSON(BANNERS_FILE, DEFAULT_BANNERS);
-  const newBanner = {
-    ...req.body,
-    id: req.body.id || `banner_${Date.now()}`,
-    created_at: req.body.created_at || new Date().toISOString(),
-  };
-  banners.push(newBanner);
-  writeJSON(BANNERS_FILE, banners);
-  res.json(newBanner);
-});
-
-// PUT update banner
-app.put('/api/banners/:id', (req, res) => {
-  const banners = readJSON(BANNERS_FILE, DEFAULT_BANNERS);
-  const index = banners.findIndex(b => b.id === req.params.id);
-  if (index !== -1) {
-    banners[index] = { ...banners[index], ...req.body };
-    writeJSON(BANNERS_FILE, banners);
-    res.json(banners[index]);
-  } else {
-    res.status(404).json({ error: 'Banner not found' });
-  }
-});
-
-// DELETE banner
-app.delete('/api/banners/:id', (req, res) => {
-  let banners = readJSON(BANNERS_FILE, DEFAULT_BANNERS);
-  const initialLength = banners.length;
-  banners = banners.filter(b => b.id !== req.params.id);
-  if (banners.length < initialLength) {
-    writeJSON(BANNERS_FILE, banners);
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ error: 'Banner not found' });
-  }
-});
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
-});
-
-// ==================== ORDERS ====================
 
 // Функция отправки в Telegram
 async function sendToTelegram(message) {
@@ -275,13 +134,157 @@ async function sendToTelegram(message) {
   }
 }
 
-// GET all orders
+// ==================== PRODUCTS ====================
+
+app.get('/api/products', (req, res) => {
+  const products = readJSON(PRODUCTS_FILE, []);
+  res.json(products);
+});
+
+app.get('/api/products/:id', (req, res) => {
+  const products = readJSON(PRODUCTS_FILE, []);
+  const product = products.find(p => p.id === req.params.id);
+  if (product) {
+    res.json(product);
+  } else {
+    res.status(404).json({ error: 'Product not found' });
+  }
+});
+
+app.post('/api/products', (req, res) => {
+  const products = readJSON(PRODUCTS_FILE, []);
+  const newProduct = {
+    ...req.body,
+    id: req.body.id || `prod_${Date.now()}`,
+    created_at: req.body.created_at || new Date().toISOString(),
+  };
+  products.unshift(newProduct);
+  writeJSON(PRODUCTS_FILE, products);
+  res.json(newProduct);
+});
+
+app.put('/api/products/:id', (req, res) => {
+  const products = readJSON(PRODUCTS_FILE, []);
+  const index = products.findIndex(p => p.id === req.params.id);
+  if (index !== -1) {
+    products[index] = { ...products[index], ...req.body };
+    writeJSON(PRODUCTS_FILE, products);
+    res.json(products[index]);
+  } else {
+    res.status(404).json({ error: 'Product not found' });
+  }
+});
+
+app.delete('/api/products/:id', (req, res) => {
+  let products = readJSON(PRODUCTS_FILE, []);
+  const initialLength = products.length;
+  products = products.filter(p => p.id !== req.params.id);
+  if (products.length < initialLength) {
+    writeJSON(PRODUCTS_FILE, products);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'Product not found' });
+  }
+});
+
+// ==================== CATEGORIES ====================
+
+app.get('/api/categories', (req, res) => {
+  const categories = readJSON(CATEGORIES_FILE, DEFAULT_CATEGORIES);
+  res.json(categories);
+});
+
+app.post('/api/categories', (req, res) => {
+  const categories = readJSON(CATEGORIES_FILE, DEFAULT_CATEGORIES);
+  const newCategory = {
+    ...req.body,
+    id: req.body.id || `cat_${Date.now()}`,
+    created_at: req.body.created_at || new Date().toISOString(),
+  };
+  categories.push(newCategory);
+  writeJSON(CATEGORIES_FILE, categories);
+  res.json(newCategory);
+});
+
+app.put('/api/categories/:id', (req, res) => {
+  const categories = readJSON(CATEGORIES_FILE, DEFAULT_CATEGORIES);
+  const index = categories.findIndex(c => c.id === req.params.id);
+  if (index !== -1) {
+    categories[index] = { ...categories[index], ...req.body };
+    writeJSON(CATEGORIES_FILE, categories);
+    res.json(categories[index]);
+  } else {
+    res.status(404).json({ error: 'Category not found' });
+  }
+});
+
+app.delete('/api/categories/:id', (req, res) => {
+  let categories = readJSON(CATEGORIES_FILE, DEFAULT_CATEGORIES);
+  const initialLength = categories.length;
+  categories = categories.filter(c => c.id !== req.params.id);
+  if (categories.length < initialLength) {
+    writeJSON(CATEGORIES_FILE, categories);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'Category not found' });
+  }
+});
+
+// ==================== BANNERS ====================
+
+app.get('/api/banners', (req, res) => {
+  const banners = readJSON(BANNERS_FILE, DEFAULT_BANNERS);
+  res.json(banners);
+});
+
+app.post('/api/banners', (req, res) => {
+  const banners = readJSON(BANNERS_FILE, DEFAULT_BANNERS);
+  const newBanner = {
+    ...req.body,
+    id: req.body.id || `banner_${Date.now()}`,
+    created_at: req.body.created_at || new Date().toISOString(),
+  };
+  banners.push(newBanner);
+  writeJSON(BANNERS_FILE, banners);
+  res.json(newBanner);
+});
+
+app.put('/api/banners/:id', (req, res) => {
+  const banners = readJSON(BANNERS_FILE, DEFAULT_BANNERS);
+  const index = banners.findIndex(b => b.id === req.params.id);
+  if (index !== -1) {
+    banners[index] = { ...banners[index], ...req.body };
+    writeJSON(BANNERS_FILE, banners);
+    res.json(banners[index]);
+  } else {
+    res.status(404).json({ error: 'Banner not found' });
+  }
+});
+
+app.delete('/api/banners/:id', (req, res) => {
+  let banners = readJSON(BANNERS_FILE, DEFAULT_BANNERS);
+  const initialLength = banners.length;
+  banners = banners.filter(b => b.id !== req.params.id);
+  if (banners.length < initialLength) {
+    writeJSON(BANNERS_FILE, banners);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'Banner not found' });
+  }
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// ==================== ORDERS ====================
+
 app.get('/api/orders', (req, res) => {
   const orders = readJSON(ORDERS_FILE, []);
   res.json(orders);
 });
 
-// POST new order
 app.post('/api/orders', async (req, res) => {
   const orders = readJSON(ORDERS_FILE, []);
   const { customer, items, total } = req.body;
@@ -291,8 +294,10 @@ app.post('/api/orders', async (req, res) => {
     customer,
     items,
     total,
-    status: 'new',
+    status: 'pending', // pending, paid, cancelled, delivered
+    payment_status: 'pending', // pending, processing, paid, failed, cancelled
     created_at: new Date().toISOString(),
+    expire_at: new Date(Date.now() + ORDER_TIMEOUT).toISOString(),
   };
   
   orders.unshift(newOrder);
@@ -321,16 +326,16 @@ ${customer.comment ? `💬 <b>Комментарий:</b> ${customer.comment}` :
 ${itemsList}
 
 💰 <b>Итого:</b> ${total.toLocaleString()} сум
+💳 <b>Статус:</b> Ожидает оплаты
 
 🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
   `.trim();
   
   await sendToTelegram(telegramMessage);
   
-  res.json(newOrder);
+  res.json({ success: true, order: newOrder });
 });
 
-// PUT update order status
 app.put('/api/orders/:id', (req, res) => {
   const orders = readJSON(ORDERS_FILE, []);
   const index = orders.findIndex(o => o.id === req.params.id);
@@ -345,13 +350,11 @@ app.put('/api/orders/:id', (req, res) => {
 
 // ==================== SETTINGS ====================
 
-// GET settings
 app.get('/api/settings', (req, res) => {
   const settings = readJSON(SETTINGS_FILE, DEFAULT_SETTINGS);
   res.json(settings);
 });
 
-// PUT update settings
 app.put('/api/settings', (req, res) => {
   const currentSettings = readJSON(SETTINGS_FILE, DEFAULT_SETTINGS);
   const newSettings = { ...currentSettings, ...req.body };
@@ -361,13 +364,11 @@ app.put('/api/settings', (req, res) => {
 
 // ==================== CITIES ====================
 
-// GET all cities
 app.get('/api/cities', (req, res) => {
   const cities = readJSON(CITIES_FILE, DEFAULT_CITIES);
   res.json(cities);
 });
 
-// POST new city
 app.post('/api/cities', (req, res) => {
   const cities = readJSON(CITIES_FILE, DEFAULT_CITIES);
   const newCity = {
@@ -379,7 +380,6 @@ app.post('/api/cities', (req, res) => {
   res.json(newCity);
 });
 
-// PUT update city
 app.put('/api/cities/:id', (req, res) => {
   const cities = readJSON(CITIES_FILE, DEFAULT_CITIES);
   const index = cities.findIndex(c => c.id === req.params.id);
@@ -392,7 +392,6 @@ app.put('/api/cities/:id', (req, res) => {
   }
 });
 
-// DELETE city
 app.delete('/api/cities/:id', (req, res) => {
   let cities = readJSON(CITIES_FILE, DEFAULT_CITIES);
   const initialLength = cities.length;
@@ -407,10 +406,8 @@ app.delete('/api/cities/:id', (req, res) => {
 
 // ==================== IMPROSOFT SYNC ====================
 
-// Файл для сырых данных IMPROSOFT
 const IMPROSOFT_FILE = path.join(DATA_DIR, 'improsoft_raw.json');
 
-// POST sync products from IMPROSOFT (сохраняет сырые данные)
 app.post('/api/improsoft/sync', (req, res) => {
   try {
     const { products } = req.body;
@@ -419,7 +416,6 @@ app.post('/api/improsoft/sync', (req, res) => {
       return res.status(400).json({ error: 'Invalid data format' });
     }
     
-    // Сохраняем сырые данные IMPROSOFT
     const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
     
     let added = 0;
@@ -450,7 +446,6 @@ app.post('/api/improsoft/sync', (req, res) => {
     
     writeJSON(IMPROSOFT_FILE, improsoftRaw);
     
-    // Также обновляем цены существующих товаров в каталоге
     const catalogProducts = readJSON(PRODUCTS_FILE, []);
     let catalogUpdated = 0;
     
@@ -482,7 +477,6 @@ app.post('/api/improsoft/sync', (req, res) => {
   }
 });
 
-// GET improsoft sync status
 app.get('/api/improsoft/status', (req, res) => {
   const products = readJSON(PRODUCTS_FILE, []);
   const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
@@ -498,12 +492,10 @@ app.get('/api/improsoft/status', (req, res) => {
   });
 });
 
-// GET raw improsoft products (для админки - список товаров)
 app.get('/api/improsoft/products', (req, res) => {
   const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
   const products = readJSON(PRODUCTS_FILE, []);
   
-  // Помечаем какие уже добавлены в каталог
   const existingBarcodes = products.filter(p => p.barcode).map(p => p.barcode);
   
   const result = improsoftRaw.map(item => ({
@@ -514,7 +506,6 @@ app.get('/api/improsoft/products', (req, res) => {
   res.json(result);
 });
 
-// POST create product from improsoft item (создать карточку)
 app.post('/api/improsoft/create-product', (req, res) => {
   try {
     const { barcode, name, name_ru, price, category_id, image_url, description, description_ru } = req.body;
@@ -525,7 +516,6 @@ app.post('/api/improsoft/create-product', (req, res) => {
     
     const products = readJSON(PRODUCTS_FILE, []);
     
-    // Проверяем что товар с таким штрихкодом ещё не добавлен
     if (products.find(p => p.barcode === barcode)) {
       return res.status(400).json({ error: 'Product with this barcode already exists' });
     }
@@ -560,32 +550,500 @@ app.post('/api/improsoft/create-product', (req, res) => {
     res.status(500).json({ error: 'Failed to create product' });
   }
 });
-// Создание платежа Payme
+
+// ==================== PAYME INTEGRATION ====================
+
+/**
+ * Генерация ссылки на оплату через Payme Checkout
+ * Формат: https://checkout.paycom.uz/base64(m=MERCHANT_ID;ac.order_id=ORDER_ID;a=AMOUNT;c=RETURN_URL)
+ */
 app.post('/api/create-payment', async (req, res) => {
   try {
-    const { order_id, amount } = req.body;
+    const { order_id, amount, return_url } = req.body;
     
     if (!order_id || !amount) {
       return res.status(400).json({ error: 'order_id and amount required' });
     }
 
-    const PAYME_MERCHANT_ID = '67xxxxxxxxxxxxxxxxxx'; // ЗАМЕНИ НА СВОЙ!
+    if (!PAYME_MERCHANT_ID) {
+      console.error('PAYME_MERCHANT_ID not configured!');
+      return res.status(500).json({ error: 'Payment system not configured' });
+    }
+
+    // Сумма в тийинах (1 сум = 100 тийинов)
     const amountTiyin = Math.round(amount * 100);
     
-    const params = Buffer.from(`m=${PAYME_MERCHANT_ID};ac.order_id=${order_id};a=${amountTiyin}`).toString('base64');
+    // Формируем параметры для URL
+    let params = `m=${PAYME_MERCHANT_ID};ac.order_id=${order_id};a=${amountTiyin}`;
+    
+    // Добавляем return_url если указан
+    if (return_url) {
+      params += `;c=${return_url}`;
+    }
+    
+    // Кодируем в base64
+    const encodedParams = Buffer.from(params).toString('base64');
+    
+    // Формируем URL для чекаута
+    const payment_url = `${PAYME_CHECKOUT_URL}/${encodedParams}`;
+    
+    console.log(`Created payment link for order ${order_id}: ${amount} UZS`);
     
     res.json({ 
       success: true, 
-      payment_url: `https://checkout.paycom.uz/${params}`,
+      payment_url,
       order_id,
-      amount
+      amount,
+      amount_tiyin: amountTiyin
     });
+    
   } catch (error) {
     console.error('Create payment error:', error);
     res.status(500).json({ error: 'Failed to create payment' });
   }
 });
+
+/**
+ * Merchant API endpoint для Payme
+ * Payme будет отправлять запросы сюда для проверки и выполнения транзакций
+ */
+app.post('/api/payme', async (req, res) => {
+  try {
+    // Проверка авторизации
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
+      return res.json(createPaymeError(-32504, 'Unauthorized'));
+    }
+    
+    // Декодируем Basic auth
+    const base64Credentials = authHeader.split(' ')[1];
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+    const [login, password] = credentials.split(':');
+    
+    // Проверяем логин и пароль
+    const secretKey = PAYME_TEST_MODE ? PAYME_SECRET_KEY_TEST : PAYME_SECRET_KEY;
+    
+    if (login !== 'Paycom' || password !== secretKey) {
+      return res.json(createPaymeError(-32504, 'Unauthorized'));
+    }
+    
+    const { id, method, params } = req.body;
+    
+    console.log(`Payme API: ${method}`, params);
+    
+    let result;
+    
+    switch (method) {
+      case 'CheckPerformTransaction':
+        result = await checkPerformTransaction(params);
+        break;
+      case 'CreateTransaction':
+        result = await createTransaction(params);
+        break;
+      case 'PerformTransaction':
+        result = await performTransaction(params);
+        break;
+      case 'CancelTransaction':
+        result = await cancelTransaction(params);
+        break;
+      case 'CheckTransaction':
+        result = await checkTransaction(params);
+        break;
+      case 'GetStatement':
+        result = await getStatement(params);
+        break;
+      default:
+        result = createPaymeError(-32601, 'Method not found');
+    }
+    
+    res.json({
+      jsonrpc: '2.0',
+      id,
+      ...result
+    });
+    
+  } catch (error) {
+    console.error('Payme API error:', error);
+    res.json({
+      jsonrpc: '2.0',
+      id: req.body?.id,
+      error: {
+        code: -32400,
+        message: { ru: 'Системная ошибка', uz: 'Tizim xatosi', en: 'System error' }
+      }
+    });
+  }
+});
+
+// ==================== PAYME MERCHANT API METHODS ====================
+
+function createPaymeError(code, message, data = null) {
+  const messages = {
+    '-32504': { ru: 'Недостаточно привилегий', uz: 'Huquqlar yetarli emas', en: 'Insufficient privileges' },
+    '-32600': { ru: 'Неверный JSON-RPC объект', uz: 'Noto\'g\'ri JSON-RPC obyekt', en: 'Invalid JSON-RPC object' },
+    '-32601': { ru: 'Метод не найден', uz: 'Metod topilmadi', en: 'Method not found' },
+    '-31050': { ru: 'Заказ не найден', uz: 'Buyurtma topilmadi', en: 'Order not found' },
+    '-31051': { ru: 'Неверная сумма', uz: 'Noto\'g\'ri summa', en: 'Invalid amount' },
+    '-31052': { ru: 'Заказ просрочен', uz: 'Buyurtma muddati o\'tgan', en: 'Order expired' },
+    '-31053': { ru: 'Заказ уже оплачен', uz: 'Buyurtma allaqachon to\'langan', en: 'Order already paid' },
+    '-31060': { ru: 'Невозможно отменить транзакцию', uz: 'Tranzaksiyani bekor qilib bo\'lmaydi', en: 'Cannot cancel transaction' },
+    '-31099': { ru: 'Транзакция не найдена', uz: 'Tranzaksiya topilmadi', en: 'Transaction not found' },
+  };
+  
+  return {
+    error: {
+      code,
+      message: messages[code.toString()] || { ru: message, uz: message, en: message },
+      data
+    }
+  };
+}
+
+// Проверка возможности выполнения транзакции
+async function checkPerformTransaction(params) {
+  const { account, amount } = params;
+  const orderId = account?.order_id;
+  
+  if (!orderId) {
+    return createPaymeError(-31050, 'Order ID not provided', 'order_id');
+  }
+  
+  const orders = readJSON(ORDERS_FILE, []);
+  const order = orders.find(o => o.id === orderId);
+  
+  if (!order) {
+    return createPaymeError(-31050, 'Order not found', 'order_id');
+  }
+  
+  // Проверяем сумму (amount в тийинах)
+  const expectedAmount = order.total * 100;
+  if (amount !== expectedAmount) {
+    return createPaymeError(-31051, 'Invalid amount', 'amount');
+  }
+  
+  // Проверяем не просрочен ли заказ
+  if (new Date() > new Date(order.expire_at)) {
+    return createPaymeError(-31052, 'Order expired', 'order_id');
+  }
+  
+  // Проверяем не оплачен ли уже
+  if (order.payment_status === 'paid') {
+    return createPaymeError(-31053, 'Order already paid', 'order_id');
+  }
+  
+  return { result: { allow: true } };
+}
+
+// Создание транзакции
+async function createTransaction(params) {
+  const { id: paymeId, time, amount, account } = params;
+  const orderId = account?.order_id;
+  
+  // Сначала проверяем возможность
+  const checkResult = await checkPerformTransaction(params);
+  if (checkResult.error) {
+    return checkResult;
+  }
+  
+  const transactions = readJSON(TRANSACTIONS_FILE, []);
+  
+  // Проверяем существует ли уже транзакция с таким payme_id
+  let transaction = transactions.find(t => t.payme_id === paymeId);
+  
+  if (transaction) {
+    // Если транзакция уже есть и в правильном статусе
+    if (transaction.state === 1) {
+      return {
+        result: {
+          create_time: transaction.create_time,
+          transaction: transaction.id,
+          state: transaction.state
+        }
+      };
+    } else {
+      return createPaymeError(-31099, 'Transaction in invalid state');
+    }
+  }
+  
+  // Проверяем нет ли другой активной транзакции для этого заказа
+  const existingTx = transactions.find(t => 
+    t.order_id === orderId && 
+    t.state === 1 && 
+    t.payme_id !== paymeId
+  );
+  
+  if (existingTx) {
+    return createPaymeError(-31050, 'Another transaction in progress for this order');
+  }
+  
+  // Создаём новую транзакцию
+  transaction = {
+    id: `tx_${Date.now()}`,
+    payme_id: paymeId,
+    order_id: orderId,
+    amount,
+    state: 1, // Создана
+    create_time: time,
+    created_at: new Date().toISOString()
+  };
+  
+  transactions.push(transaction);
+  writeJSON(TRANSACTIONS_FILE, transactions);
+  
+  // Обновляем статус заказа
+  const orders = readJSON(ORDERS_FILE, []);
+  const orderIndex = orders.findIndex(o => o.id === orderId);
+  if (orderIndex !== -1) {
+    orders[orderIndex].payment_status = 'processing';
+    orders[orderIndex].transaction_id = transaction.id;
+    writeJSON(ORDERS_FILE, orders);
+  }
+  
+  console.log(`Transaction created: ${transaction.id} for order ${orderId}`);
+  
+  return {
+    result: {
+      create_time: transaction.create_time,
+      transaction: transaction.id,
+      state: transaction.state
+    }
+  };
+}
+
+// Выполнение (подтверждение) транзакции
+async function performTransaction(params) {
+  const { id: paymeId } = params;
+  
+  const transactions = readJSON(TRANSACTIONS_FILE, []);
+  const txIndex = transactions.findIndex(t => t.payme_id === paymeId);
+  
+  if (txIndex === -1) {
+    return createPaymeError(-31099, 'Transaction not found');
+  }
+  
+  const transaction = transactions[txIndex];
+  
+  // Если уже выполнена
+  if (transaction.state === 2) {
+    return {
+      result: {
+        transaction: transaction.id,
+        perform_time: transaction.perform_time,
+        state: transaction.state
+      }
+    };
+  }
+  
+  // Проверяем что транзакция в состоянии "создана"
+  if (transaction.state !== 1) {
+    return createPaymeError(-31099, 'Transaction in invalid state');
+  }
+  
+  // Выполняем транзакцию
+  const performTime = Date.now();
+  transactions[txIndex].state = 2; // Выполнена
+  transactions[txIndex].perform_time = performTime;
+  transactions[txIndex].performed_at = new Date().toISOString();
+  writeJSON(TRANSACTIONS_FILE, transactions);
+  
+  // Обновляем статус заказа
+  const orders = readJSON(ORDERS_FILE, []);
+  const orderIndex = orders.findIndex(o => o.id === transaction.order_id);
+  if (orderIndex !== -1) {
+    orders[orderIndex].payment_status = 'paid';
+    orders[orderIndex].status = 'paid';
+    orders[orderIndex].paid_at = new Date().toISOString();
+    writeJSON(ORDERS_FILE, orders);
+    
+    // Отправляем уведомление в Telegram
+    const order = orders[orderIndex];
+    const telegramMessage = `
+✅ <b>Оплата получена!</b>
+
+🛒 Заказ: #${order.id.slice(-6)}
+👤 Клиент: ${order.customer.name}
+📞 Телефон: ${order.customer.phone}
+💰 Сумма: ${order.total.toLocaleString()} сум
+
+🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
+    `.trim();
+    
+    await sendToTelegram(telegramMessage);
+  }
+  
+  console.log(`Transaction performed: ${transaction.id}`);
+  
+  return {
+    result: {
+      transaction: transaction.id,
+      perform_time: performTime,
+      state: 2
+    }
+  };
+}
+
+// Отмена транзакции
+async function cancelTransaction(params) {
+  const { id: paymeId, reason } = params;
+  
+  const transactions = readJSON(TRANSACTIONS_FILE, []);
+  const txIndex = transactions.findIndex(t => t.payme_id === paymeId);
+  
+  if (txIndex === -1) {
+    return createPaymeError(-31099, 'Transaction not found');
+  }
+  
+  const transaction = transactions[txIndex];
+  
+  // Если уже отменена
+  if (transaction.state < 0) {
+    return {
+      result: {
+        transaction: transaction.id,
+        cancel_time: transaction.cancel_time,
+        state: transaction.state
+      }
+    };
+  }
+  
+  // Определяем новое состояние
+  let newState;
+  if (transaction.state === 1) {
+    newState = -1; // Отменена до выполнения
+  } else if (transaction.state === 2) {
+    newState = -2; // Отменена после выполнения
+  } else {
+    return createPaymeError(-31060, 'Cannot cancel transaction');
+  }
+  
+  const cancelTime = Date.now();
+  transactions[txIndex].state = newState;
+  transactions[txIndex].cancel_time = cancelTime;
+  transactions[txIndex].reason = reason;
+  transactions[txIndex].cancelled_at = new Date().toISOString();
+  writeJSON(TRANSACTIONS_FILE, transactions);
+  
+  // Обновляем статус заказа
+  const orders = readJSON(ORDERS_FILE, []);
+  const orderIndex = orders.findIndex(o => o.id === transaction.order_id);
+  if (orderIndex !== -1) {
+    orders[orderIndex].payment_status = 'cancelled';
+    orders[orderIndex].status = 'cancelled';
+    orders[orderIndex].cancelled_at = new Date().toISOString();
+    writeJSON(ORDERS_FILE, orders);
+    
+    // Отправляем уведомление в Telegram
+    const order = orders[orderIndex];
+    const reasonText = {
+      1: 'Ошибка получателя',
+      2: 'Ошибка в деталях транзакции',
+      3: 'Отменено пользователем',
+      4: 'Ошибка при выполнении',
+      5: 'Отменено покупателем'
+    };
+    
+    const telegramMessage = `
+❌ <b>Оплата отменена</b>
+
+🛒 Заказ: #${order.id.slice(-6)}
+👤 Клиент: ${order.customer.name}
+📞 Телефон: ${order.customer.phone}
+💰 Сумма: ${order.total.toLocaleString()} сум
+📝 Причина: ${reasonText[reason] || 'Не указана'}
+
+🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
+    `.trim();
+    
+    await sendToTelegram(telegramMessage);
+  }
+  
+  console.log(`Transaction cancelled: ${transaction.id}, reason: ${reason}`);
+  
+  return {
+    result: {
+      transaction: transaction.id,
+      cancel_time: cancelTime,
+      state: newState
+    }
+  };
+}
+
+// Проверка статуса транзакции
+async function checkTransaction(params) {
+  const { id: paymeId } = params;
+  
+  const transactions = readJSON(TRANSACTIONS_FILE, []);
+  const transaction = transactions.find(t => t.payme_id === paymeId);
+  
+  if (!transaction) {
+    return createPaymeError(-31099, 'Transaction not found');
+  }
+  
+  return {
+    result: {
+      create_time: transaction.create_time,
+      perform_time: transaction.perform_time || 0,
+      cancel_time: transaction.cancel_time || 0,
+      transaction: transaction.id,
+      state: transaction.state,
+      reason: transaction.reason || null
+    }
+  };
+}
+
+// Получение списка транзакций за период
+async function getStatement(params) {
+  const { from, to } = params;
+  
+  const transactions = readJSON(TRANSACTIONS_FILE, []);
+  
+  const filtered = transactions.filter(t => {
+    const createTime = t.create_time;
+    return createTime >= from && createTime <= to;
+  });
+  
+  const result = filtered.map(t => ({
+    id: t.payme_id,
+    time: t.create_time,
+    amount: t.amount,
+    account: { order_id: t.order_id },
+    create_time: t.create_time,
+    perform_time: t.perform_time || 0,
+    cancel_time: t.cancel_time || 0,
+    transaction: t.id,
+    state: t.state,
+    reason: t.reason || null
+  }));
+  
+  return { result: { transactions: result } };
+}
+
+// ==================== CALLBACK URL для возврата после оплаты ====================
+
+app.get('/api/payment/callback', (req, res) => {
+  const { order_id } = req.query;
+  
+  if (order_id) {
+    const orders = readJSON(ORDERS_FILE, []);
+    const order = orders.find(o => o.id === order_id);
+    
+    if (order) {
+      // Редирект на страницу успеха или страницу заказа
+      // Замените URL на ваш домен
+      const successUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${successUrl}/?payment_status=${order.payment_status}&order_id=${order_id}`);
+    }
+  }
+  
+  res.redirect('/');
+});
+
+// ==================== START SERVER ====================
+
 app.listen(PORT, () => {
   console.log(`🚀 Texnokross API running on port ${PORT}`);
   console.log(`📁 Data stored in: ${DATA_DIR}`);
+  console.log(`💳 Payme Mode: ${PAYME_TEST_MODE ? 'TEST' : 'PRODUCTION'}`);
+  console.log(`💳 Payme Merchant ID: ${PAYME_MERCHANT_ID ? 'Configured' : 'NOT CONFIGURED!'}`);
 });
