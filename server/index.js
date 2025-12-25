@@ -41,8 +41,8 @@ const PAYME_SECRET_KEY = process.env.PAYME_SECRET_KEY || '';
 const PAYME_SECRET_KEY_TEST = process.env.PAYME_SECRET_KEY_TEST || '';
 const PAYME_TEST_MODE = process.env.PAYME_TEST_MODE === 'true';
 
-const PAYME_CHECKOUT_URL = PAYME_TEST_MODE 
-  ? 'https://test.paycom.uz' 
+const PAYME_CHECKOUT_URL = PAYME_TEST_MODE
+  ? 'https://test.paycom.uz'
   : 'https://checkout.paycom.uz';
 
 const ORDER_TIMEOUT = 12 * 60 * 60 * 1000;
@@ -145,13 +145,13 @@ async function sendTelegramWithButtons(message, orderId, shortId) {
     console.log('Telegram not configured, skipping notification');
     return false;
   }
-  
+
   // Используем short_id для callback_data (лимит 64 байта в Telegram)
   const cbId = shortId || orderId.slice(-6);
-  
+
   try {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    
+
     const keyboard = {
       inline_keyboard: [
         [
@@ -164,7 +164,7 @@ async function sendTelegramWithButtons(message, orderId, shortId) {
         ]
       ]
     };
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -185,17 +185,17 @@ async function sendTelegramWithButtons(message, orderId, shortId) {
 // Обновление сообщения
 async function updateTelegramMessage(chatId, messageId, newText, shortId, showButtons = true) {
   if (!TELEGRAM_BOT_TOKEN) return false;
-  
+
   try {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`;
-    
+
     const body = {
       chat_id: chatId,
       message_id: messageId,
       text: newText,
       parse_mode: 'HTML'
     };
-    
+
     if (showButtons) {
       body.reply_markup = {
         inline_keyboard: [
@@ -210,7 +210,7 @@ async function updateTelegramMessage(chatId, messageId, newText, shortId, showBu
         ]
       };
     }
-    
+
     await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -226,7 +226,7 @@ async function updateTelegramMessage(chatId, messageId, newText, shortId, showBu
 // Ответ на callback
 async function answerCallback(callbackQueryId, text) {
   if (!TELEGRAM_BOT_TOKEN) return;
-  
+
   try {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`;
     await fetch(url, {
@@ -247,23 +247,23 @@ async function answerCallback(callbackQueryId, text) {
 app.post('/api/telegram/webhook', async (req, res) => {
   try {
     const update = req.body;
-    
+
     // Обработка callback от кнопок
     if (update.callback_query) {
       const callbackData = update.callback_query.data;
       const chatId = update.callback_query.message.chat.id;
       const messageId = update.callback_query.message.message_id;
       const callbackQueryId = update.callback_query.id;
-      
+
       console.log('Callback received:', callbackData);
-      
+
       // Парсим callback: st_STATUS_SHORTID (новый формат)
       const match = callbackData.match(/^st_(proc|ship|done|canc)_(\d+)$/);
-      
+
       if (match) {
         const statusCode = match[1];
         const shortId = match[2];
-        
+
         // Маппинг коротких кодов в полные статусы
         const statusMap = {
           'proc': 'processing',
@@ -272,35 +272,35 @@ app.post('/api/telegram/webhook', async (req, res) => {
           'canc': 'cancelled'
         };
         const newStatus = statusMap[statusCode];
-        
+
         console.log('Webhook received - Status:', newStatus, 'ShortID:', shortId);
-        
+
         // Обновляем статус заказа
         const orders = readJSON(ORDERS_FILE, []);
-        
+
         // Ищем по short_id или по последним 6 символам id
-        const orderIndex = orders.findIndex(o => 
+        const orderIndex = orders.findIndex(o =>
           o.short_id === shortId || o.id.endsWith(shortId)
         );
-        
+
         console.log('Found order index:', orderIndex);
-        
+
         if (orderIndex !== -1) {
           const order = orders[orderIndex];
           const oldStatus = order.status;
-          
+
           // Обновляем статус
           orders[orderIndex].status = newStatus;
-          
+
           // Добавляем timestamp
           const now = new Date().toISOString();
           if (newStatus === 'processing') orders[orderIndex].processing_at = now;
           if (newStatus === 'shipped') orders[orderIndex].shipped_at = now;
           if (newStatus === 'delivered') orders[orderIndex].delivered_at = now;
           if (newStatus === 'cancelled') orders[orderIndex].cancelled_at = now;
-          
+
           writeJSON(ORDERS_FILE, orders);
-          
+
           // Статусы для отображения
           const statusLabels = {
             'processing': '📦 Обрабатывается',
@@ -308,19 +308,19 @@ app.post('/api/telegram/webhook', async (req, res) => {
             'delivered': '✅ Доставлено',
             'cancelled': '❌ Отменён'
           };
-          
+
           // Формируем обновлённое сообщение
           const statusLabel = statusLabels[newStatus] || newStatus;
-          
+
           // Формируем список товаров
-          let itemsList = order.items.map(item => 
+          let itemsList = order.items.map(item =>
             `  • ${item.name} x${item.quantity} = ${item.price.toLocaleString()} сум`
           ).join('\n');
 
-          const deliveryInfo = order.customer.deliveryCost === 0 
+          const deliveryInfo = order.customer.deliveryCost === 0
             ? `🚚 Доставка: Бесплатная`
             : `🚚 Доставка: ${order.customer.deliveryCost?.toLocaleString() || 0} сум`;
-          
+
           const updatedMessage = `
 ✅ <b>Заказ #${order.short_id || order.id.slice(-6)}</b>
 
@@ -338,12 +338,12 @@ ${itemsList}
 📊 <b>Статус:</b> ${statusLabel}
 🕐 Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
           `.trim();
-          
+
           // Обновляем сообщение
           const showButtons = newStatus !== 'delivered' && newStatus !== 'cancelled';
           const cbShortId = order.short_id || order.id.slice(-6);
           await updateTelegramMessage(chatId, messageId, updatedMessage, cbShortId, showButtons);
-          
+
           // Отвечаем на callback
           await answerCallback(callbackQueryId, `Статус изменён: ${statusLabel}`);
         } else {
@@ -357,24 +357,24 @@ ${itemsList}
         if (oldMatch) {
           const newStatus = oldMatch[1];
           const orderId = oldMatch[2];
-          
+
           console.log('Old format callback - Status:', newStatus, 'OrderID:', orderId);
-          
+
           const orders = readJSON(ORDERS_FILE, []);
           const orderIndex = orders.findIndex(o => o.id === orderId);
-          
+
           if (orderIndex !== -1) {
             const order = orders[orderIndex];
             orders[orderIndex].status = newStatus;
-            
+
             const now = new Date().toISOString();
             if (newStatus === 'processing') orders[orderIndex].processing_at = now;
             if (newStatus === 'shipped') orders[orderIndex].shipped_at = now;
             if (newStatus === 'delivered') orders[orderIndex].delivered_at = now;
             if (newStatus === 'cancelled') orders[orderIndex].cancelled_at = now;
-            
+
             writeJSON(ORDERS_FILE, orders);
-            
+
             const statusLabels = {
               'processing': '📦 Обрабатывается',
               'shipped': '🚚 Отправлено',
@@ -382,7 +382,7 @@ ${itemsList}
               'cancelled': '❌ Отменён'
             };
             const statusLabel = statusLabels[newStatus] || newStatus;
-            
+
             await answerCallback(callbackQueryId, `Статус изменён: ${statusLabel}`);
           } else {
             await answerCallback(callbackQueryId, `Заказ не найден`);
@@ -390,7 +390,7 @@ ${itemsList}
         }
       }
     }
-    
+
     res.json({ ok: true });
   } catch (error) {
     console.error('Telegram webhook error:', error);
@@ -404,7 +404,7 @@ ${itemsList}
 app.post('/api/verification-bot/webhook', async (req, res) => {
   try {
     const update = req.body;
-    
+
     // Обработка команды /start
     if (update.message?.text === '/start') {
       const chatId = update.message.chat.id;
@@ -413,7 +413,7 @@ app.post('/api/verification-bot/webhook', async (req, res) => {
         resize_keyboard: true,
         one_time_keyboard: true
       };
-      
+
       await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -424,12 +424,12 @@ app.post('/api/verification-bot/webhook', async (req, res) => {
         })
       });
     }
-    
+
     // Обработка контакта (номера телефона)
     if (update.message?.contact) {
       const chatId = update.message.chat.id;
       const contact = update.message.contact;
-      
+
       // Проверяем что это номер самого пользователя
       if (contact.user_id !== update.message.from.id) {
         await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
@@ -444,16 +444,16 @@ app.post('/api/verification-bot/webhook', async (req, res) => {
         res.json({ ok: true });
         return;
       }
-      
+
       // Нормализуем номер телефона
       const phoneNumber = contact.phone_number.replace(/\D/g, '').slice(-9);
-      
+
       console.log(`📱 Verification bot: Contact received - ${phoneNumber}`);
-      
+
       // Проверяем есть ли запрос на восстановление для этого номера
       const resetCodes = readJSON(RESET_CODES_FILE, []);
       const resetEntry = resetCodes.find(c => c.phone === phoneNumber);
-      
+
       if (resetEntry && new Date(resetEntry.expires_at) > new Date()) {
         // Код найден и не истёк - отправляем
         await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
@@ -466,7 +466,7 @@ app.post('/api/verification-bot/webhook', async (req, res) => {
             reply_markup: { remove_keyboard: true }
           })
         });
-        
+
         console.log(`✅ Verification code sent to ${phoneNumber}: ${resetEntry.code}`);
       } else {
         // Нет активного запроса на восстановление
@@ -479,11 +479,11 @@ app.post('/api/verification-bot/webhook', async (req, res) => {
             reply_markup: { remove_keyboard: true }
           })
         });
-        
+
         console.log(`❌ No reset request found for ${phoneNumber}`);
       }
     }
-    
+
     res.json({ ok: true });
   } catch (error) {
     console.error('Verification bot webhook error:', error);
@@ -640,31 +640,31 @@ app.get('/api/health', (req, res) => {
 // Регистрация
 app.post('/api/auth/register', (req, res) => {
   const { phone, password, name } = req.body;
-  
+
   if (!phone || !password) {
     return res.status(400).json({ error: 'Telefon va parol kerak' });
   }
-  
+
   // Нормализуем телефон
   const normalizedPhone = phone.replace(/\D/g, '').slice(-9);
-  
+
   if (normalizedPhone.length < 9) {
     return res.status(400).json({ error: 'Telefon raqami noto\'g\'ri' });
   }
-  
+
   // Проверяем если это админ номер
   if (normalizedPhone === ADMIN_PHONE.slice(-9)) {
     return res.status(400).json({ error: 'Bu raqam bilan ro\'yxatdan o\'tish mumkin emas' });
   }
-  
+
   const users = readJSON(USERS_FILE, []);
-  
+
   // Проверяем существует ли пользователь
   const existingUser = users.find(u => u.phone === normalizedPhone);
   if (existingUser) {
     return res.status(400).json({ error: 'Bu raqam allaqachon ro\'yxatdan o\'tgan' });
   }
-  
+
   // Создаём нового пользователя
   const token = generateToken();
   const newUser = {
@@ -676,12 +676,12 @@ app.post('/api/auth/register', (req, res) => {
     isAdmin: false,
     created_at: new Date().toISOString()
   };
-  
+
   users.push(newUser);
   writeJSON(USERS_FILE, users);
-  
+
   console.log(`👤 New user registered: ${normalizedPhone}`);
-  
+
   res.json({
     success: true,
     user: {
@@ -697,13 +697,13 @@ app.post('/api/auth/register', (req, res) => {
 // Вход
 app.post('/api/auth/login', (req, res) => {
   const { phone, password } = req.body;
-  
+
   if (!phone || !password) {
     return res.status(400).json({ error: 'Telefon va parol kerak' });
   }
-  
+
   const normalizedPhone = phone.replace(/\D/g, '').slice(-9);
-  
+
   // Проверяем если это админ
   if (normalizedPhone === ADMIN_PHONE.slice(-9)) {
     if (password === ADMIN_PASSWORD) {
@@ -723,27 +723,27 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(401).json({ error: 'Parol noto\'g\'ri' });
     }
   }
-  
+
   const users = readJSON(USERS_FILE, []);
   const user = users.find(u => u.phone === normalizedPhone);
-  
+
   if (!user) {
     return res.status(404).json({ error: 'Foydalanuvchi topilmadi. Avval ro\'yxatdan o\'ting.' });
   }
-  
+
   if (!verifyPassword(password, user.password_hash)) {
     return res.status(401).json({ error: 'Parol noto\'g\'ri' });
   }
-  
+
   // Обновляем токен
   const token = generateToken();
   const userIndex = users.findIndex(u => u.phone === normalizedPhone);
   users[userIndex].token = token;
   users[userIndex].last_login = new Date().toISOString();
   writeJSON(USERS_FILE, users);
-  
+
   console.log(`👤 User logged in: ${normalizedPhone}`);
-  
+
   res.json({
     success: true,
     user: {
@@ -759,32 +759,32 @@ app.post('/api/auth/login', (req, res) => {
 // Запрос кода восстановления пароля
 app.post('/api/auth/forgot-password', async (req, res) => {
   const { phone } = req.body;
-  
+
   if (!phone) {
     return res.status(400).json({ error: 'Telefon raqami kerak' });
   }
-  
+
   const normalizedPhone = phone.replace(/\D/g, '').slice(-9);
-  
+
   // Проверяем если это админ
   if (normalizedPhone === ADMIN_PHONE.slice(-9)) {
     return res.status(400).json({ error: 'Admin parolini tiklash mumkin emas' });
   }
-  
+
   const users = readJSON(USERS_FILE, []);
   const user = users.find(u => u.phone === normalizedPhone);
-  
+
   if (!user) {
     return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
   }
-  
+
   // Генерируем код
   const code = generateResetCode();
   const resetCodes = readJSON(RESET_CODES_FILE, []);
-  
+
   // Удаляем старые коды для этого телефона
   const filteredCodes = resetCodes.filter(c => c.phone !== normalizedPhone);
-  
+
   // Добавляем новый код (действителен 10 минут)
   filteredCodes.push({
     phone: normalizedPhone,
@@ -792,13 +792,13 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     created_at: new Date().toISOString()
   });
-  
+
   writeJSON(RESET_CODES_FILE, filteredCodes);
-  
+
   // Отправляем SMS через Eskiz.uz (если настроен)
   const ESKIZ_EMAIL = process.env.ESKIZ_EMAIL;
   const ESKIZ_PASSWORD = process.env.ESKIZ_PASSWORD;
-  
+
   if (ESKIZ_EMAIL && ESKIZ_PASSWORD) {
     try {
       // Получаем токен Eskiz
@@ -808,13 +808,13 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         body: JSON.stringify({ email: ESKIZ_EMAIL, password: ESKIZ_PASSWORD })
       });
       const tokenData = await tokenResponse.json();
-      
+
       if (tokenData.data?.token) {
         // Отправляем SMS
         const fullPhone = '998' + normalizedPhone;
         const smsResponse = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${tokenData.data.token}`
           },
@@ -831,7 +831,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       console.error('Eskiz SMS error:', err);
     }
   }
-  
+
   // Также отправляем код в Telegram (как резерв)
   if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
     const message = `🔐 Parolni tiklash kodi\n\n📞 Telefon: ${normalizedPhone}\n🔑 Kod: ${code}\n⏰ Amal qilish: 10 daqiqa`;
@@ -848,17 +848,17 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       console.error('Telegram send error:', err);
     }
   }
-  
+
   console.log(`🔐 Password reset code for ${normalizedPhone}: ${code}`);
-  
+
   // Определяем было ли отправлено SMS
   const smsSent = !!(ESKIZ_EMAIL && ESKIZ_PASSWORD);
-  
+
   // Ссылка на верификационного бота
   const botLink = 'https://t.me/texnokross_auth_bot';
-  
-  res.json({ 
-    success: true, 
+
+  res.json({
+    success: true,
     message: smsSent ? 'SMS kod yuborildi' : 'Telegram botga o\'ting',
     sms_sent: smsSent,
     bot_link: smsSent ? undefined : botLink,
@@ -869,87 +869,87 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 // Сброс пароля с кодом
 app.post('/api/auth/reset-password', (req, res) => {
   const { phone, code, newPassword } = req.body;
-  
+
   if (!phone || !code || !newPassword) {
     return res.status(400).json({ error: 'Telefon, kod va yangi parol kerak' });
   }
-  
+
   if (newPassword.length < 4) {
     return res.status(400).json({ error: 'Parol kamida 4 ta belgidan iborat bo\'lishi kerak' });
   }
-  
+
   const normalizedPhone = phone.replace(/\D/g, '').slice(-9);
-  
+
   const resetCodes = readJSON(RESET_CODES_FILE, []);
   const resetEntry = resetCodes.find(c => c.phone === normalizedPhone && c.code === code);
-  
+
   if (!resetEntry) {
     return res.status(400).json({ error: 'Kod noto\'g\'ri' });
   }
-  
+
   if (new Date(resetEntry.expires_at) < new Date()) {
     return res.status(400).json({ error: 'Kod eskirgan. Yangi kod so\'rang.' });
   }
-  
+
   // Обновляем пароль
   const users = readJSON(USERS_FILE, []);
   const userIndex = users.findIndex(u => u.phone === normalizedPhone);
-  
+
   if (userIndex === -1) {
     return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
   }
-  
+
   users[userIndex].password_hash = hashPassword(newPassword);
   users[userIndex].password_updated_at = new Date().toISOString();
   writeJSON(USERS_FILE, users);
-  
+
   // Удаляем использованный код
   const filteredCodes = resetCodes.filter(c => c.phone !== normalizedPhone);
   writeJSON(RESET_CODES_FILE, filteredCodes);
-  
+
   console.log(`🔐 Password reset for ${normalizedPhone}`);
-  
+
   res.json({ success: true, message: 'Parol muvaffaqiyatli o\'zgartirildi' });
 });
 
 // Смена пароля (для авторизованного пользователя)
 app.post('/api/auth/change-password', (req, res) => {
   const { phone, oldPassword, newPassword } = req.body;
-  
+
   if (!phone || !oldPassword || !newPassword) {
     return res.status(400).json({ error: 'Barcha maydonlarni to\'ldiring' });
   }
-  
+
   if (newPassword.length < 4) {
     return res.status(400).json({ error: 'Yangi parol kamida 4 ta belgidan iborat bo\'lishi kerak' });
   }
-  
+
   const normalizedPhone = phone.replace(/\D/g, '').slice(-9);
-  
+
   const users = readJSON(USERS_FILE, []);
   const userIndex = users.findIndex(u => u.phone === normalizedPhone);
-  
+
   if (userIndex === -1) {
     return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
   }
-  
+
   if (!verifyPassword(oldPassword, users[userIndex].password_hash)) {
     return res.status(401).json({ error: 'Joriy parol noto\'g\'ri' });
   }
-  
+
   users[userIndex].password_hash = hashPassword(newPassword);
   users[userIndex].password_updated_at = new Date().toISOString();
   writeJSON(USERS_FILE, users);
-  
+
   console.log(`🔐 Password changed for ${normalizedPhone}`);
-  
+
   res.json({ success: true, message: 'Parol muvaffaqiyatli o\'zgartirildi' });
 });
 
 // Получение профиля пользователя
 app.get('/api/auth/profile/:phone', (req, res) => {
   const normalizedPhone = req.params.phone.replace(/\D/g, '').slice(-9);
-  
+
   // Проверяем если это админ
   if (normalizedPhone === ADMIN_PHONE.slice(-9)) {
     return res.json({
@@ -959,14 +959,14 @@ app.get('/api/auth/profile/:phone', (req, res) => {
       isAdmin: true
     });
   }
-  
+
   const users = readJSON(USERS_FILE, []);
   const user = users.find(u => u.phone === normalizedPhone);
-  
+
   if (!user) {
     return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
   }
-  
+
   res.json({
     id: user.id,
     phone: user.phone,
@@ -997,10 +997,10 @@ app.get('/api/orders/:id', (req, res) => {
 app.post('/api/orders', async (req, res) => {
   const orders = readJSON(ORDERS_FILE, []);
   const { customer, items, total } = req.body;
-  
+
   // Генерируем короткий ID из 6 цифр
   const shortId = Math.floor(100000 + Math.random() * 900000).toString();
-  
+
   const newOrder = {
     id: `order_${Date.now()}_${shortId}`,
     short_id: shortId,
@@ -1012,12 +1012,12 @@ app.post('/api/orders', async (req, res) => {
     created_at: new Date().toISOString(),
     expire_at: new Date(Date.now() + ORDER_TIMEOUT).toISOString(),
   };
-  
+
   orders.unshift(newOrder);
   writeJSON(ORDERS_FILE, orders);
-  
+
   console.log(`📦 New order created: ${newOrder.id} (pending payment)`);
-  
+
   res.json({ success: true, order: newOrder });
 });
 
@@ -1038,16 +1038,16 @@ app.put('/api/orders/:id/status', (req, res) => {
   const { status } = req.body;
   const orders = readJSON(ORDERS_FILE, []);
   const index = orders.findIndex(o => o.id === req.params.id);
-  
+
   if (index !== -1) {
     orders[index].status = status;
-    
+
     const now = new Date().toISOString();
     if (status === 'processing') orders[index].processing_at = now;
     if (status === 'shipped') orders[index].shipped_at = now;
     if (status === 'delivered') orders[index].delivered_at = now;
     if (status === 'cancelled') orders[index].cancelled_at = now;
-    
+
     writeJSON(ORDERS_FILE, orders);
     res.json(orders[index]);
   } else {
@@ -1118,22 +1118,22 @@ const IMPROSOFT_FILE = path.join(DATA_DIR, 'improsoft_raw.json');
 app.post('/api/improsoft/sync', (req, res) => {
   try {
     const { products } = req.body;
-    
+
     if (!products || !Array.isArray(products)) {
       return res.status(400).json({ error: 'Invalid data format' });
     }
-    
+
     const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
-    
+
     let added = 0;
     let updated = 0;
-    
+
     for (const item of products) {
       const { name, barcode, price } = item;
       if (!name || !barcode) continue;
-      
+
       const existingIndex = improsoftRaw.findIndex(p => p.barcode === barcode);
-      
+
       if (existingIndex >= 0) {
         improsoftRaw[existingIndex].name = name;
         improsoftRaw[existingIndex].price = price || improsoftRaw[existingIndex].price;
@@ -1150,12 +1150,12 @@ app.post('/api/improsoft/sync', (req, res) => {
         added++;
       }
     }
-    
+
     writeJSON(IMPROSOFT_FILE, improsoftRaw);
-    
+
     const catalogProducts = readJSON(PRODUCTS_FILE, []);
     let catalogUpdated = 0;
-    
+
     for (const item of products) {
       const catalogProduct = catalogProducts.find(p => p.barcode === item.barcode);
       if (catalogProduct && item.price) {
@@ -1163,13 +1163,13 @@ app.post('/api/improsoft/sync', (req, res) => {
         catalogUpdated++;
       }
     }
-    
+
     if (catalogUpdated > 0) {
       writeJSON(PRODUCTS_FILE, catalogProducts);
     }
-    
+
     console.log(`IMPROSOFT Sync: raw added ${added}, raw updated ${updated}, catalog prices updated ${catalogUpdated}`);
-    
+
     res.json({
       success: true,
       added,
@@ -1177,7 +1177,7 @@ app.post('/api/improsoft/sync', (req, res) => {
       catalogUpdated,
       total: improsoftRaw.length
     });
-    
+
   } catch (error) {
     console.error('IMPROSOFT sync error:', error);
     res.status(500).json({ error: 'Sync failed' });
@@ -1188,13 +1188,13 @@ app.get('/api/improsoft/status', (req, res) => {
   const products = readJSON(PRODUCTS_FILE, []);
   const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
   const improsoftProducts = products.filter(p => p.source === 'improsoft');
-  
+
   res.json({
     total: products.length,
     fromImprosoft: improsoftProducts.length,
     rawTotal: improsoftRaw.length,
     notAdded: improsoftRaw.length - improsoftProducts.length,
-    lastSync: improsoftRaw.length > 0 ? 
+    lastSync: improsoftRaw.length > 0 ?
       improsoftRaw.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))[0].updated_at || improsoftRaw[0].created_at : null
   });
 });
@@ -1202,31 +1202,31 @@ app.get('/api/improsoft/status', (req, res) => {
 app.get('/api/improsoft/products', (req, res) => {
   const improsoftRaw = readJSON(IMPROSOFT_FILE, []);
   const products = readJSON(PRODUCTS_FILE, []);
-  
+
   const existingBarcodes = products.filter(p => p.barcode).map(p => p.barcode);
-  
+
   const result = improsoftRaw.map(item => ({
     ...item,
     inCatalog: existingBarcodes.includes(item.barcode)
   }));
-  
+
   res.json(result);
 });
 
 app.post('/api/improsoft/create-product', (req, res) => {
   try {
     const { barcode, name, name_ru, price, category_id, image_url, description, description_ru } = req.body;
-    
+
     if (!barcode || !name) {
       return res.status(400).json({ error: 'Barcode and name required' });
     }
-    
+
     const products = readJSON(PRODUCTS_FILE, []);
-    
+
     if (products.find(p => p.barcode === barcode)) {
       return res.status(400).json({ error: 'Product with this barcode already exists' });
     }
-    
+
     const newProduct = {
       id: `prod_${Date.now()}`,
       name,
@@ -1244,14 +1244,14 @@ app.post('/api/improsoft/create-product', (req, res) => {
       created_at: new Date().toISOString(),
       source: 'improsoft'
     };
-    
+
     products.push(newProduct);
     writeJSON(PRODUCTS_FILE, products);
-    
+
     console.log(`Created product from IMPROSOFT: ${name} (${barcode})`);
-    
+
     res.json(newProduct);
-    
+
   } catch (error) {
     console.error('Create product error:', error);
     res.status(500).json({ error: 'Failed to create product' });
@@ -1263,7 +1263,7 @@ app.post('/api/improsoft/create-product', (req, res) => {
 app.post('/api/create-payment', async (req, res) => {
   try {
     const { order_id, amount, return_url } = req.body;
-    
+
     if (!order_id || !amount) {
       return res.status(400).json({ error: 'order_id and amount required' });
     }
@@ -1274,26 +1274,26 @@ app.post('/api/create-payment', async (req, res) => {
     }
 
     const amountTiyin = Math.round(amount * 100);
-    
+
     let params = `m=${PAYME_MERCHANT_ID};ac.order_id=${order_id};a=${amountTiyin}`;
-    
+
     if (return_url) {
       params += `;c=${return_url}`;
     }
-    
+
     const encodedParams = Buffer.from(params).toString('base64');
     const payment_url = `${PAYME_CHECKOUT_URL}/${encodedParams}`;
-    
+
     console.log(`💳 Payment link created for order ${order_id}: ${amount} сум`);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       payment_url,
       order_id,
       amount,
       amount_tiyin: amountTiyin
     });
-    
+
   } catch (error) {
     console.error('Create payment error:', error);
     res.status(500).json({ error: 'Failed to create payment' });
@@ -1303,27 +1303,27 @@ app.post('/api/create-payment', async (req, res) => {
 app.post('/api/payme', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Basic ')) {
-      return res.json(createPaymeError(-32504, 'Unauthorized'));
+      return res.json(createPaymeError(-31001, 'Unauthorized'));
     }
-    
+
     const base64Credentials = authHeader.split(' ')[1];
     const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
     const [login, password] = credentials.split(':');
-    
+
     const secretKey = PAYME_TEST_MODE ? PAYME_SECRET_KEY_TEST : PAYME_SECRET_KEY;
-    
+
     if (login !== 'Paycom' || password !== secretKey) {
-      return res.json(createPaymeError(-32504, 'Unauthorized'));
+      return res.json(createPaymeError(-31001, 'Unauthorized'));
     }
-    
+
     const { id, method, params } = req.body;
-    
+
     console.log(`💳 Payme API: ${method}`, params);
-    
+
     let result;
-    
+
     switch (method) {
       case 'CheckPerformTransaction':
         result = await checkPerformTransaction(params);
@@ -1346,13 +1346,13 @@ app.post('/api/payme', async (req, res) => {
       default:
         result = createPaymeError(-32601, 'Method not found');
     }
-    
+
     res.json({
       jsonrpc: '2.0',
       id,
       ...result
     });
-    
+
   } catch (error) {
     console.error('Payme API error:', error);
     res.json({
@@ -1370,7 +1370,7 @@ app.post('/api/payme', async (req, res) => {
 
 function createPaymeError(code, message, data = null) {
   const messages = {
-    '-32504': { ru: 'Недостаточно привилегий', uz: 'Huquqlar yetarli emas', en: 'Insufficient privileges' },
+    '-31001': { ru: 'Недостаточно привилегий', uz: 'Huquqlar yetarli emas', en: 'Insufficient privileges' },
     '-32600': { ru: 'Неверный JSON-RPC объект', uz: 'Noto\'g\'ri JSON-RPC obyekt', en: 'Invalid JSON-RPC object' },
     '-32601': { ru: 'Метод не найден', uz: 'Metod topilmadi', en: 'Method not found' },
     '-31050': { ru: 'Заказ не найден', uz: 'Buyurtma topilmadi', en: 'Order not found' },
@@ -1380,7 +1380,7 @@ function createPaymeError(code, message, data = null) {
     '-31060': { ru: 'Невозможно отменить транзакцию', uz: 'Tranzaksiyani bekor qilib bo\'lmaydi', en: 'Cannot cancel transaction' },
     '-31099': { ru: 'Транзакция не найдена', uz: 'Tranzaksiya topilmadi', en: 'Transaction not found' },
   };
-  
+
   return {
     error: {
       code,
@@ -1393,47 +1393,47 @@ function createPaymeError(code, message, data = null) {
 async function checkPerformTransaction(params) {
   const { account, amount } = params;
   const orderId = account?.order_id;
-  
+
   if (!orderId) {
     return createPaymeError(-31050, 'Order ID not provided', 'order_id');
   }
-  
+
   const orders = readJSON(ORDERS_FILE, []);
   const order = orders.find(o => o.id === orderId);
-  
+
   if (!order) {
     return createPaymeError(-31050, 'Order not found', 'order_id');
   }
-  
+
   const expectedAmount = order.total * 100;
   if (amount !== expectedAmount) {
     return createPaymeError(-31051, 'Invalid amount', 'amount');
   }
-  
+
   if (new Date() > new Date(order.expire_at)) {
     return createPaymeError(-31052, 'Order expired', 'order_id');
   }
-  
+
   if (order.payment_status === 'paid') {
     return createPaymeError(-31053, 'Order already paid', 'order_id');
   }
-  
+
   return { result: { allow: true } };
 }
 
 async function createTransaction(params) {
   const { id: paymeId, time, amount, account } = params;
   const orderId = account?.order_id;
-  
+
   const checkResult = await checkPerformTransaction(params);
   if (checkResult.error) {
     return checkResult;
   }
-  
+
   const transactions = readJSON(TRANSACTIONS_FILE, []);
-  
+
   let transaction = transactions.find(t => t.payme_id === paymeId);
-  
+
   if (transaction) {
     if (transaction.state === 1) {
       return {
@@ -1447,17 +1447,17 @@ async function createTransaction(params) {
       return createPaymeError(-31099, 'Transaction in invalid state');
     }
   }
-  
-  const existingTx = transactions.find(t => 
-    t.order_id === orderId && 
-    t.state === 1 && 
+
+  const existingTx = transactions.find(t =>
+    t.order_id === orderId &&
+    t.state === 1 &&
     t.payme_id !== paymeId
   );
-  
+
   if (existingTx) {
     return createPaymeError(-31050, 'Another transaction in progress for this order');
   }
-  
+
   transaction = {
     id: `tx_${Date.now()}`,
     payme_id: paymeId,
@@ -1467,10 +1467,10 @@ async function createTransaction(params) {
     create_time: time,
     created_at: new Date().toISOString()
   };
-  
+
   transactions.push(transaction);
   writeJSON(TRANSACTIONS_FILE, transactions);
-  
+
   const orders = readJSON(ORDERS_FILE, []);
   const orderIndex = orders.findIndex(o => o.id === orderId);
   if (orderIndex !== -1) {
@@ -1478,9 +1478,9 @@ async function createTransaction(params) {
     orders[orderIndex].transaction_id = transaction.id;
     writeJSON(ORDERS_FILE, orders);
   }
-  
+
   console.log(`💳 Transaction created: ${transaction.id} for order ${orderId}`);
-  
+
   return {
     result: {
       create_time: transaction.create_time,
@@ -1492,16 +1492,16 @@ async function createTransaction(params) {
 
 async function performTransaction(params) {
   const { id: paymeId } = params;
-  
+
   const transactions = readJSON(TRANSACTIONS_FILE, []);
   const txIndex = transactions.findIndex(t => t.payme_id === paymeId);
-  
+
   if (txIndex === -1) {
     return createPaymeError(-31099, 'Transaction not found');
   }
-  
+
   const transaction = transactions[txIndex];
-  
+
   if (transaction.state === 2) {
     return {
       result: {
@@ -1511,17 +1511,17 @@ async function performTransaction(params) {
       }
     };
   }
-  
+
   if (transaction.state !== 1) {
     return createPaymeError(-31099, 'Transaction in invalid state');
   }
-  
+
   const performTime = Date.now();
   transactions[txIndex].state = 2;
   transactions[txIndex].perform_time = performTime;
   transactions[txIndex].performed_at = new Date().toISOString();
   writeJSON(TRANSACTIONS_FILE, transactions);
-  
+
   const orders = readJSON(ORDERS_FILE, []);
   const orderIndex = orders.findIndex(o => o.id === transaction.order_id);
   if (orderIndex !== -1) {
@@ -1529,18 +1529,18 @@ async function performTransaction(params) {
     orders[orderIndex].status = 'paid';
     orders[orderIndex].paid_at = new Date().toISOString();
     writeJSON(ORDERS_FILE, orders);
-    
+
     // Отправляем уведомление в Telegram С КНОПКАМИ
     const order = orders[orderIndex];
-    
-    let itemsList = order.items.map(item => 
+
+    let itemsList = order.items.map(item =>
       `  • ${item.name} x${item.quantity} = ${item.price.toLocaleString()} сум`
     ).join('\n');
 
-    const deliveryInfo = order.customer.deliveryCost === 0 
+    const deliveryInfo = order.customer.deliveryCost === 0
       ? `🚚 Доставка: Бесплатная`
       : `🚚 Доставка: ${order.customer.deliveryCost?.toLocaleString() || 0} сум`;
-    
+
     const telegramMessage = `
 ✅ <b>Оплата получена!</b>
 
@@ -1559,12 +1559,12 @@ ${itemsList}
 📊 <b>Статус:</b> 💳 Оплачено
 🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
     `.trim();
-    
+
     await sendTelegramWithButtons(telegramMessage, order.id, order.short_id);
   }
-  
+
   console.log(`✅ Transaction performed: ${transaction.id}`);
-  
+
   return {
     result: {
       transaction: transaction.id,
@@ -1576,16 +1576,16 @@ ${itemsList}
 
 async function cancelTransaction(params) {
   const { id: paymeId, reason } = params;
-  
+
   const transactions = readJSON(TRANSACTIONS_FILE, []);
   const txIndex = transactions.findIndex(t => t.payme_id === paymeId);
-  
+
   if (txIndex === -1) {
     return createPaymeError(-31099, 'Transaction not found');
   }
-  
+
   const transaction = transactions[txIndex];
-  
+
   if (transaction.state < 0) {
     return {
       result: {
@@ -1595,7 +1595,7 @@ async function cancelTransaction(params) {
       }
     };
   }
-  
+
   let newState;
   if (transaction.state === 1) {
     newState = -1;
@@ -1604,14 +1604,14 @@ async function cancelTransaction(params) {
   } else {
     return createPaymeError(-31060, 'Cannot cancel transaction');
   }
-  
+
   const cancelTime = Date.now();
   transactions[txIndex].state = newState;
   transactions[txIndex].cancel_time = cancelTime;
   transactions[txIndex].reason = reason;
   transactions[txIndex].cancelled_at = new Date().toISOString();
   writeJSON(TRANSACTIONS_FILE, transactions);
-  
+
   const orders = readJSON(ORDERS_FILE, []);
   const orderIndex = orders.findIndex(o => o.id === transaction.order_id);
   if (orderIndex !== -1) {
@@ -1620,9 +1620,9 @@ async function cancelTransaction(params) {
     orders[orderIndex].cancelled_at = new Date().toISOString();
     writeJSON(ORDERS_FILE, orders);
   }
-  
+
   console.log(`❌ Transaction cancelled: ${transaction.id}, reason: ${reason}`);
-  
+
   return {
     result: {
       transaction: transaction.id,
@@ -1634,14 +1634,14 @@ async function cancelTransaction(params) {
 
 async function checkTransaction(params) {
   const { id: paymeId } = params;
-  
+
   const transactions = readJSON(TRANSACTIONS_FILE, []);
   const transaction = transactions.find(t => t.payme_id === paymeId);
-  
+
   if (!transaction) {
     return createPaymeError(-31099, 'Transaction not found');
   }
-  
+
   return {
     result: {
       create_time: transaction.create_time,
@@ -1656,14 +1656,14 @@ async function checkTransaction(params) {
 
 async function getStatement(params) {
   const { from, to } = params;
-  
+
   const transactions = readJSON(TRANSACTIONS_FILE, []);
-  
+
   const filtered = transactions.filter(t => {
     const createTime = t.create_time;
     return createTime >= from && createTime <= to;
   });
-  
+
   const result = filtered.map(t => ({
     id: t.payme_id,
     time: t.create_time,
@@ -1676,7 +1676,7 @@ async function getStatement(params) {
     state: t.state,
     reason: t.reason || null
   }));
-  
+
   return { result: { transactions: result } };
 }
 
@@ -1684,16 +1684,16 @@ async function getStatement(params) {
 
 app.get('/api/payment/callback', (req, res) => {
   const { order_id } = req.query;
-  
+
   if (order_id) {
     const orders = readJSON(ORDERS_FILE, []);
     const order = orders.find(o => o.id === order_id);
-    
+
     if (order) {
       return res.redirect(`${FRONTEND_URL}/order?payment_status=${order.payment_status}&order_id=${order_id}`);
     }
   }
-  
+
   res.redirect(FRONTEND_URL);
 });
 
