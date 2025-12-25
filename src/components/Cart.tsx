@@ -33,18 +33,18 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   const { t, language } = useLanguage();
   const { isDark } = useTheme();
   const { user, isAuthenticated, login } = useAuth();
-  
+
   const [view, setView] = useState<CartView>('cart');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
-  
+
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -77,7 +77,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
       }));
     }
   }, [user, isAuthenticated]);
-  
+
   if (!isOpen) return null;
 
   const deliveryCost = selectedCity?.price || 0;
@@ -163,17 +163,17 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
 
       setOrderId(orderResponse.order.id);
       setView('processing');
-      
+
       // Очищаем корзину сразу после создания заказа
       onClearCart();
 
       // ИСПРАВЛЕНО: Редирект на страницу отслеживания заказа вместо главной
       const returnUrl = `${window.location.origin}/order?order_id=${orderResponse.order.id}&payment_status=paid`;
       const paymentResponse = await api.createPayment(orderResponse.order.id, grandTotal, returnUrl);
-      
+
       if (paymentResponse.payment_url) {
         setPaymentUrl(paymentResponse.payment_url);
-        
+
         // Автоматический редирект через 2 секунды
         setTimeout(() => {
           window.location.href = paymentResponse.payment_url;
@@ -212,8 +212,8 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
   };
 
   const inputClass = `w-full px-4 py-3 rounded-xl border transition-all outline-none ${
-    isDark 
-      ? 'bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-blue-400 focus:bg-white/15' 
+    isDark
+      ? 'bg-white/10 border-white/20 text-white placeholder-white/40 focus:border-blue-400 focus:bg-white/15'
       : 'bg-white border-blue-200 text-blue-900 placeholder-blue-400 focus:border-blue-500 focus:bg-blue-50'
   }`;
 
@@ -223,11 +223,11 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
 
       <div className="absolute right-0 top-0 bottom-0 w-full max-w-[100vw] sm:max-w-md animate-in slide-in-from-right duration-300">
         <div className={`h-full backdrop-blur-2xl border-l shadow-2xl flex flex-col transition-colors duration-300 ${
-          isDark 
-            ? 'bg-gradient-to-br from-blue-950/98 via-slate-900/98 to-blue-950/98 border-white/10' 
+          isDark
+            ? 'bg-gradient-to-br from-blue-950/98 via-slate-900/98 to-blue-950/98 border-white/10'
             : 'bg-gradient-to-br from-white via-blue-50 to-white border-blue-300'
         }`}>
-          
+
           {/* PROCESSING VIEW */}
           {view === 'processing' && (
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
@@ -240,11 +240,11 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
               <p className={`mb-4 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
                 {language === 'ru' ? 'Вы будете перенаправлены на страницу оплаты Payme' : 'Siz Payme tolov sahifasiga yonaltirilasiz'}
               </p>
-              
+
               <div className={`p-4 rounded-xl mb-6 ${isDark ? 'bg-white/10' : 'bg-cyan-50'}`}>
                 <img src="https://cdn.payme.uz/logo/payme_color.svg" alt="Payme" className="h-10" />
               </div>
-              
+
               {paymentUrl && (
                 <button
                   onClick={handleManualRedirect}
@@ -254,7 +254,7 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   {language === 'ru' ? 'Перейти к оплате' : 'Tolovga otish'}
                 </button>
               )}
-              
+
               <p className={`mt-4 text-sm ${isDark ? 'text-blue-200/50' : 'text-blue-500'}`}>
                 {language === 'ru' ? 'Заказ' : 'Buyurtma'}: #{orderId.slice(-6)}
               </p>
@@ -280,8 +280,8 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   </p>
                 </div>
               )}
-              <button 
-                onClick={handleSuccessClose} 
+              <button
+                onClick={handleSuccessClose}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all"
               >
                 {t.order.backToShopping}
@@ -299,23 +299,23 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                 {language === 'ru' ? 'Оплата не прошла' : 'Tolov amalga oshirilmadi'}
               </h2>
               <p className={`mb-6 ${isDark ? 'text-blue-200/70' : 'text-blue-600'}`}>
-                {language === 'ru' 
-                  ? 'Произошла ошибка при оплате. Попробуйте ещё раз или выберите другой способ.' 
+                {language === 'ru'
+                  ? 'Произошла ошибка при оплате. Попробуйте ещё раз или выберите другой способ.'
                   : 'Tolovda xatolik yuz berdi. Qaytadan urinib koring.'}
               </p>
               <div className="flex gap-3 w-full">
-                <button 
-                  onClick={handleSuccessClose} 
+                <button
+                  onClick={handleSuccessClose}
                   className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-                    isDark 
-                      ? 'bg-white/10 hover:bg-white/20 text-white' 
+                    isDark
+                      ? 'bg-white/10 hover:bg-white/20 text-white'
                       : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
                   {language === 'ru' ? 'Закрыть' : 'Yopish'}
                 </button>
-                <button 
-                  onClick={handleErrorRetry} 
+                <button
+                  onClick={handleErrorRetry}
                   className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all"
                 >
                   {language === 'ru' ? 'Повторить' : 'Qaytadan'}
@@ -366,6 +366,9 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                   <p className={`mt-2 text-xs ${isDark ? 'text-blue-200/60' : 'text-blue-600'}`}>
                     {language === 'ru' ? 'Если вы новый пользователь, аккаунт создастся автоматически' : 'Yangi foydalanuvchi bolsangiz, hisob avtomatik yaratiladi'}
                   </p>
+                  <button type="button" onClick={() => { onClose(); window.location.href = '/login'; }} className={`mt-2 text-sm font-medium ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}>
+                    {language === 'ru' ? 'Забыли пароль?' : 'Parolni unutdingizmi?'}
+                  </button>
                 </div>
 
                 {loginError && <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm">{loginError}</div>}
@@ -504,8 +507,8 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
                 <button onClick={handleSubmitOrder} disabled={isSubmitting}
                   className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
                   <CreditCard className="w-5 h-5" />
-                  {isSubmitting 
-                    ? (language === 'ru' ? 'Обработка...' : 'Jarayonda...') 
+                  {isSubmitting
+                    ? (language === 'ru' ? 'Обработка...' : 'Jarayonda...')
                     : (language === 'ru' ? `Оплатить ${grandTotal.toLocaleString()} сум` : `${grandTotal.toLocaleString()} som tolash`)}
                 </button>
               </div>
