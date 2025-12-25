@@ -1,5 +1,5 @@
 // API URL - измени на свой домен в продакшене
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
 
 // Хелпер для запросов
 async function request(endpoint: string, options?: RequestInit) {
