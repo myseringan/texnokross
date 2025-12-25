@@ -17,7 +17,7 @@ interface AuthContextType {
   login: (phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (phone: string, password: string, name?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  forgotPassword: (phone: string) => Promise<{ success: boolean; error?: string; code?: string }>;
+  forgotPassword: (phone: string) => Promise<{ success: boolean; error?: string; botLink?: string }>;
   resetPassword: (phone: string, code: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   loading: boolean;
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
-  const forgotPassword = async (phone: string): Promise<{ success: boolean; error?: string; code?: string }> => {
+  const forgotPassword = async (phone: string): Promise<{ success: boolean; error?: string; botLink?: string }> => {
     try {
       const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
         method: 'POST',
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error || 'Xatolik yuz berdi' };
       }
       
-      return { success: true, code: data.debug_code };
+      return { success: true, botLink: data.bot_link };
     } catch (err) {
       console.error('Forgot password error:', err);
       return { success: false, error: 'Server bilan bog\'lanishda xatolik' };
