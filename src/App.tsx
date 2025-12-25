@@ -12,6 +12,7 @@ import { LoginPage } from './pages/LoginPage';
 import { AdminPage } from './pages/AdminPage';
 import { OrderTrackingPage } from './pages/OrderTrackingPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { TvPage } from './pages/TvPage';
 import { Cart } from './components/Cart';
 import { ProductDetail } from './components/ProductDetail';
 import { useProducts } from './hooks/useProducts';
@@ -193,7 +194,12 @@ function App() {
       <LanguageProvider>
         <ThemeProvider>
           <AuthProvider>
-            <AppContent />
+            <Routes>
+              {/* TV страница - без хедера и футера */}
+              <Route path="/tv" element={<TvPage />} />
+              {/* Основное приложение */}
+              <Route path="/*" element={<AppContent />} />
+            </Routes>
           </AuthProvider>
         </ThemeProvider>
       </LanguageProvider>
