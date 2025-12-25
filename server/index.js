@@ -146,7 +146,6 @@ async function sendTelegramWithButtons(message, orderId, shortId) {
     return false;
   }
 
-  // Используем short_id для callback_data (лимит 64 байта в Telegram)
   const cbId = shortId || orderId.slice(-6);
 
   try {
@@ -248,7 +247,6 @@ app.post('/api/telegram/webhook', async (req, res) => {
   try {
     const update = req.body;
 
-    // Обработка callback от кнопок
     if (update.callback_query) {
       const callbackData = update.callback_query.data;
       const chatId = update.callback_query.message.chat.id;
@@ -257,14 +255,12 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
       console.log('Callback received:', callbackData);
 
-      // Парсим callback: st_STATUS_SHORTID (новый формат)
       const match = callbackData.match(/^st_(proc|ship|done|canc)_(\d+)$/);
 
       if (match) {
         const statusCode = match[1];
         const shortId = match[2];
 
-        // Маппинг коротких кодов в полные статусы
         const statusMap = {
           'proc': 'processing',
           'ship': 'shipped',
@@ -275,10 +271,8 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
         console.log('Webhook received - Status:', newStatus, 'ShortID:', shortId);
 
-        // Обновляем статус заказа
         const orders = readJSON(ORDERS_FILE, []);
 
-        // Ищем по short_id или по последним 6 символам id
         const orderIndex = orders.findIndex(o =>
           o.short_id === shortId || o.id.endsWith(shortId)
         );
@@ -287,12 +281,9 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
         if (orderIndex !== -1) {
           const order = orders[orderIndex];
-          const oldStatus = order.status;
 
-          // Обновляем статус
           orders[orderIndex].status = newStatus;
 
-          // Добавляем timestamp
           const now = new Date().toISOString();
           if (newStatus === 'processing') orders[orderIndex].processing_at = now;
           if (newStatus === 'shipped') orders[orderIndex].shipped_at = now;
@@ -301,7 +292,6 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
           writeJSON(ORDERS_FILE, orders);
 
-          // Статусы для отображения
           const statusLabels = {
             'processing': '📦 Обрабатывается',
             'shipped': '🚚 Отправлено',
@@ -309,10 +299,8 @@ app.post('/api/telegram/webhook', async (req, res) => {
             'cancelled': '❌ Отменён'
           };
 
-          // Формируем обновлённое сообщение
           const statusLabel = statusLabels[newStatus] || newStatus;
 
-          // Формируем список товаров
           let itemsList = order.items.map(item =>
             `  • ${item.name} x${item.quantity} = ${item.price.toLocaleString()} сум`
           ).join('\n');
@@ -339,54 +327,14 @@ ${itemsList}
 🕐 Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
           `.trim();
 
-          // Обновляем сообщение
           const showButtons = newStatus !== 'delivered' && newStatus !== 'cancelled';
           const cbShortId = order.short_id || order.id.slice(-6);
           await updateTelegramMessage(chatId, messageId, updatedMessage, cbShortId, showButtons);
 
-          // Отвечаем на callback
           await answerCallback(callbackQueryId, `Статус изменён: ${statusLabel}`);
         } else {
           console.log('ORDER NOT FOUND! ShortID from callback:', shortId);
-          console.log('All order IDs in database:', orders.map(o => `${o.id} (short: ${o.short_id})`).join(', '));
           await answerCallback(callbackQueryId, `Заказ не найден: #${shortId}`);
-        }
-      } else {
-        // Пробуем старый формат для существующих заказов
-        const oldMatch = callbackData.match(/^status_(\w+)_(.+)$/);
-        if (oldMatch) {
-          const newStatus = oldMatch[1];
-          const orderId = oldMatch[2];
-
-          console.log('Old format callback - Status:', newStatus, 'OrderID:', orderId);
-
-          const orders = readJSON(ORDERS_FILE, []);
-          const orderIndex = orders.findIndex(o => o.id === orderId);
-
-          if (orderIndex !== -1) {
-            const order = orders[orderIndex];
-            orders[orderIndex].status = newStatus;
-
-            const now = new Date().toISOString();
-            if (newStatus === 'processing') orders[orderIndex].processing_at = now;
-            if (newStatus === 'shipped') orders[orderIndex].shipped_at = now;
-            if (newStatus === 'delivered') orders[orderIndex].delivered_at = now;
-            if (newStatus === 'cancelled') orders[orderIndex].cancelled_at = now;
-
-            writeJSON(ORDERS_FILE, orders);
-
-            const statusLabels = {
-              'processing': '📦 Обрабатывается',
-              'shipped': '🚚 Отправлено',
-              'delivered': '✅ Доставлено',
-              'cancelled': '❌ Отменён'
-            };
-            const statusLabel = statusLabels[newStatus] || newStatus;
-
-            await answerCallback(callbackQueryId, `Статус изменён: ${statusLabel}`);
-          } else {
-            await answerCallback(callbackQueryId, `Заказ не найден`);
-          }
         }
       }
     }
@@ -400,18 +348,50 @@ ${itemsList}
 
 // ==================== VERIFICATION BOT WEBHOOK ====================
 
-// Webhook для верификационного бота (восстановление пароля)
 app.post('/api/verification-bot/webhook', async (req, res) => {
   try {
     const update = req.body;
+    const chatId = update.message?.chat?.id || update.callback_query?.message?.chat?.id;
+
+    // Обработка callback от кнопок
+    if (update.callback_query) {
+      const callbackData = update.callback_query.data;
+      const callbackQueryId = update.callback_query.id;
+
+      if (callbackData === 'get_code') {
+        const keyboard = {
+          keyboard: [[{ text: '📱 Raqamni yuborish', request_contact: true }]],
+          resize_keyboard: true,
+          one_time_keyboard: true
+        };
+
+        await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: '📱 Kodni olish uchun telefon raqamingizni yuboring.\n\nQuyidagi tugmani bosing:',
+            reply_markup: keyboard
+          })
+        });
+
+        await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackQueryId })
+        });
+      }
+
+      res.json({ ok: true });
+      return;
+    }
 
     // Обработка команды /start
     if (update.message?.text === '/start') {
-      const chatId = update.message.chat.id;
       const keyboard = {
         keyboard: [[{ text: '📱 Raqamni yuborish', request_contact: true }]],
         resize_keyboard: true,
-        one_time_keyboard: true
+        one_time_keyboard: false
       };
 
       await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
@@ -419,69 +399,91 @@ app.post('/api/verification-bot/webhook', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: chatId,
-          text: '🔐 Parolni tiklash uchun telefon raqamingizni yuboring.\n\nQuyidagi tugmani bosing:',
+          text: '🔐 <b>Texnokross - Parolni tiklash</b>\n\nBu bot orqali parolni tiklash kodini olishingiz mumkin.\n\n📋 <b>Qanday ishlaydi:</b>\n1️⃣ Saytda "Parolni unutdim" tugmasini bosing\n2️⃣ Telefon raqamingizni kiriting\n3️⃣ Bu botga keling va raqamingizni yuboring\n4️⃣ Kod avtomatik yuboriladi\n\n👇 Quyidagi tugmani bosing:',
+          parse_mode: 'HTML',
           reply_markup: keyboard
         })
       });
+
+      res.json({ ok: true });
+      return;
     }
 
-    // Обработка контакта (номера телефона)
+    // Обработка контакта
     if (update.message?.contact) {
-      const chatId = update.message.chat.id;
       const contact = update.message.contact;
 
-      // Проверяем что это номер самого пользователя
       if (contact.user_id !== update.message.from.id) {
         await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
-            text: '❌ Iltimos, faqat o\'zingizning raqamingizni yuboring.',
-            reply_markup: { remove_keyboard: true }
+            text: '❌ Iltimos, faqat o\'zingizning raqamingizni yuboring.'
           })
         });
         res.json({ ok: true });
         return;
       }
 
-      // Нормализуем номер телефона
       const phoneNumber = contact.phone_number.replace(/\D/g, '').slice(-9);
-
       console.log(`📱 Verification bot: Contact received - ${phoneNumber}`);
 
-      // Проверяем есть ли запрос на восстановление для этого номера
       const resetCodes = readJSON(RESET_CODES_FILE, []);
       const resetEntry = resetCodes.find(c => c.phone === phoneNumber);
 
+      const retryKeyboard = {
+        inline_keyboard: [[{ text: '🔄 Qayta urinish', callback_data: 'get_code' }]]
+      };
+
+      const mainKeyboard = {
+        keyboard: [[{ text: '📱 Raqamni yuborish', request_contact: true }]],
+        resize_keyboard: true
+      };
+
       if (resetEntry && new Date(resetEntry.expires_at) > new Date()) {
-        // Код найден и не истёк - отправляем
         await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
-            text: `✅ Sizning tasdiqlash kodingiz:\n\n🔑 <b>${resetEntry.code}</b>\n\n⏰ Kod 10 daqiqa amal qiladi.\n\nUshbu kodni saytda kiriting.`,
+            text: `✅ <b>Sizning tasdiqlash kodingiz:</b>\n\n🔑 <code>${resetEntry.code}</code>\n\n⏰ Kod 10 daqiqa amal qiladi.\n\n📝 Ushbu kodni saytda kiriting.\n\n💡 <i>Kodni bosib nusxa olishingiz mumkin</i>`,
             parse_mode: 'HTML',
-            reply_markup: { remove_keyboard: true }
+            reply_markup: mainKeyboard
           })
         });
-
         console.log(`✅ Verification code sent to ${phoneNumber}: ${resetEntry.code}`);
       } else {
-        // Нет активного запроса на восстановление
         await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
-            text: '❌ Sizning raqamingiz uchun parolni tiklash so\'rovi topilmadi.\n\n1️⃣ Avval saytda "Parolni unutdim" tugmasini bosing\n2️⃣ Telefon raqamingizni kiriting\n3️⃣ Keyin bu botga qayting va raqamingizni yuboring',
-            reply_markup: { remove_keyboard: true }
+            text: '❌ <b>Kod topilmadi</b>\n\nSizning raqamingiz uchun parolni tiklash so\'rovi topilmadi yoki kod eskirgan.\n\n📋 <b>Nima qilish kerak:</b>\n1️⃣ Saytga o\'ting: texnokross.uz\n2️⃣ "Kirish" tugmasini bosing\n3️⃣ "Parolni unutdim" havolasini bosing\n4️⃣ Telefon raqamingizni kiriting\n5️⃣ Bu botga qaytib, raqamingizni yuboring',
+            parse_mode: 'HTML',
+            reply_markup: retryKeyboard
           })
         });
-
         console.log(`❌ No reset request found for ${phoneNumber}`);
       }
+    }
+
+    // Любой другой текст
+    if (update.message?.text && update.message.text !== '/start') {
+      const keyboard = {
+        keyboard: [[{ text: '📱 Raqamni yuborish', request_contact: true }]],
+        resize_keyboard: true
+      };
+
+      await fetch(`https://api.telegram.org/bot${VERIFICATION_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: '👋 Salom!\n\nParolni tiklash kodini olish uchun quyidagi tugmani bosing.',
+          reply_markup: keyboard
+        })
+      });
     }
 
     res.json({ ok: true });
@@ -645,27 +647,23 @@ app.post('/api/auth/register', (req, res) => {
     return res.status(400).json({ error: 'Telefon va parol kerak' });
   }
 
-  // Нормализуем телефон
   const normalizedPhone = phone.replace(/\D/g, '').slice(-9);
 
   if (normalizedPhone.length < 9) {
     return res.status(400).json({ error: 'Telefon raqami noto\'g\'ri' });
   }
 
-  // Проверяем если это админ номер
   if (normalizedPhone === ADMIN_PHONE.slice(-9)) {
     return res.status(400).json({ error: 'Bu raqam bilan ro\'yxatdan o\'tish mumkin emas' });
   }
 
   const users = readJSON(USERS_FILE, []);
 
-  // Проверяем существует ли пользователь
   const existingUser = users.find(u => u.phone === normalizedPhone);
   if (existingUser) {
     return res.status(400).json({ error: 'Bu raqam allaqachon ro\'yxatdan o\'tgan' });
   }
 
-  // Создаём нового пользователя
   const token = generateToken();
   const newUser = {
     id: `user_${Date.now()}`,
@@ -704,7 +702,6 @@ app.post('/api/auth/login', (req, res) => {
 
   const normalizedPhone = phone.replace(/\D/g, '').slice(-9);
 
-  // Проверяем если это админ
   if (normalizedPhone === ADMIN_PHONE.slice(-9)) {
     if (password === ADMIN_PASSWORD) {
       const token = generateToken();
@@ -735,7 +732,6 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Parol noto\'g\'ri' });
   }
 
-  // Обновляем токен
   const token = generateToken();
   const userIndex = users.findIndex(u => u.phone === normalizedPhone);
   users[userIndex].token = token;
@@ -766,7 +762,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
   const normalizedPhone = phone.replace(/\D/g, '').slice(-9);
 
-  // Проверяем если это админ
   if (normalizedPhone === ADMIN_PHONE.slice(-9)) {
     return res.status(400).json({ error: 'Admin parolini tiklash mumkin emas' });
   }
@@ -778,14 +773,11 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
   }
 
-  // Генерируем код
   const code = generateResetCode();
   const resetCodes = readJSON(RESET_CODES_FILE, []);
 
-  // Удаляем старые коды для этого телефона
   const filteredCodes = resetCodes.filter(c => c.phone !== normalizedPhone);
 
-  // Добавляем новый код (действителен 10 минут)
   filteredCodes.push({
     phone: normalizedPhone,
     code: code,
@@ -795,58 +787,15 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
   writeJSON(RESET_CODES_FILE, filteredCodes);
 
-  // Отправляем SMS через Eskiz.uz (если настроен)
-  const ESKIZ_EMAIL = process.env.ESKIZ_EMAIL;
-  const ESKIZ_PASSWORD = process.env.ESKIZ_PASSWORD;
-
-  if (ESKIZ_EMAIL && ESKIZ_PASSWORD) {
-    try {
-      // Получаем токен Eskiz
-      const tokenResponse = await fetch('https://notify.eskiz.uz/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: ESKIZ_EMAIL, password: ESKIZ_PASSWORD })
-      });
-      const tokenData = await tokenResponse.json();
-
-      if (tokenData.data?.token) {
-        // Отправляем SMS
-        const fullPhone = '998' + normalizedPhone;
-        const smsResponse = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${tokenData.data.token}`
-          },
-          body: JSON.stringify({
-            mobile_phone: fullPhone,
-            message: `Texnokross: Parolni tiklash kodi: ${code}. Kod 10 daqiqa amal qiladi.`,
-            from: '4546'
-          })
-        });
-        const smsData = await smsResponse.json();
-        console.log(`📱 SMS sent to ${fullPhone}:`, smsData);
-      }
-    } catch (err) {
-      console.error('Eskiz SMS error:', err);
-    }
-  }
-
-
   console.log(`🔐 Password reset code for ${normalizedPhone}: ${code}`);
 
-  // Определяем было ли отправлено SMS
-  const smsSent = !!(ESKIZ_EMAIL && ESKIZ_PASSWORD);
-
-  // Ссылка на верификационного бота
   const botLink = 'https://t.me/texnokross_auth_bot';
 
   res.json({
     success: true,
-    message: smsSent ? 'SMS kod yuborildi' : 'Telegram botga o\'ting',
-    sms_sent: smsSent,
-    bot_link: smsSent ? undefined : botLink,
-    use_bot: !smsSent
+    message: 'Telegram botga o\'ting',
+    bot_link: botLink,
+    use_bot: true
   });
 });
 
@@ -875,7 +824,6 @@ app.post('/api/auth/reset-password', (req, res) => {
     return res.status(400).json({ error: 'Kod eskirgan. Yangi kod so\'rang.' });
   }
 
-  // Обновляем пароль
   const users = readJSON(USERS_FILE, []);
   const userIndex = users.findIndex(u => u.phone === normalizedPhone);
 
@@ -887,7 +835,6 @@ app.post('/api/auth/reset-password', (req, res) => {
   users[userIndex].password_updated_at = new Date().toISOString();
   writeJSON(USERS_FILE, users);
 
-  // Удаляем использованный код
   const filteredCodes = resetCodes.filter(c => c.phone !== normalizedPhone);
   writeJSON(RESET_CODES_FILE, filteredCodes);
 
@@ -896,7 +843,7 @@ app.post('/api/auth/reset-password', (req, res) => {
   res.json({ success: true, message: 'Parol muvaffaqiyatli o\'zgartirildi' });
 });
 
-// Смена пароля (для авторизованного пользователя)
+// Смена пароля
 app.post('/api/auth/change-password', (req, res) => {
   const { phone, oldPassword, newPassword } = req.body;
 
@@ -930,11 +877,10 @@ app.post('/api/auth/change-password', (req, res) => {
   res.json({ success: true, message: 'Parol muvaffaqiyatli o\'zgartirildi' });
 });
 
-// Получение профиля пользователя
+// Получение профиля
 app.get('/api/auth/profile/:phone', (req, res) => {
   const normalizedPhone = req.params.phone.replace(/\D/g, '').slice(-9);
 
-  // Проверяем если это админ
   if (normalizedPhone === ADMIN_PHONE.slice(-9)) {
     return res.json({
       id: 'admin',
@@ -967,7 +913,6 @@ app.get('/api/orders', (req, res) => {
   res.json(orders);
 });
 
-// Получение заказа по ID
 app.get('/api/orders/:id', (req, res) => {
   const orders = readJSON(ORDERS_FILE, []);
   const order = orders.find(o => o.id === req.params.id);
@@ -982,7 +927,6 @@ app.post('/api/orders', async (req, res) => {
   const orders = readJSON(ORDERS_FILE, []);
   const { customer, items, total } = req.body;
 
-  // Генерируем короткий ID из 6 цифр
   const shortId = Math.floor(100000 + Math.random() * 900000).toString();
 
   const newOrder = {
@@ -1017,7 +961,6 @@ app.put('/api/orders/:id', (req, res) => {
   }
 });
 
-// API для обновления статуса заказа
 app.put('/api/orders/:id/status', (req, res) => {
   const { status } = req.body;
   const orders = readJSON(ORDERS_FILE, []);
@@ -1284,6 +1227,27 @@ app.post('/api/create-payment', async (req, res) => {
   }
 });
 
+// Payme Merchant API
+function createPaymeError(code, message) {
+  const messages = {
+    '-31001': { ru: 'Недостаточно привилегий', uz: 'Huquqlar yetarli emas', en: 'Insufficient privileges' },
+    '-31050': { ru: 'Заказ не найден', uz: 'Buyurtma topilmadi', en: 'Order not found' },
+    '-31052': { ru: 'Заказ просрочен', uz: 'Buyurtma muddati o\'tgan', en: 'Order expired' },
+    '-31053': { ru: 'Заказ уже оплачен', uz: 'Buyurtma allaqachon to\'langan', en: 'Order already paid' },
+    '-31060': { ru: 'Невозможно отменить', uz: 'Bekor qilib bo\'lmaydi', en: 'Cannot cancel' },
+    '-31099': { ru: 'Транзакция не найдена', uz: 'Tranzaksiya topilmadi', en: 'Transaction not found' },
+    '-32600': { ru: 'Неверный запрос', uz: 'Noto\'g\'ri so\'rov', en: 'Invalid request' },
+    '-32601': { ru: 'Метод не найден', uz: 'Metod topilmadi', en: 'Method not found' },
+  };
+
+  return {
+    error: {
+      code,
+      message: messages[code.toString()] || { ru: message, uz: message, en: message }
+    }
+  };
+}
+
 app.post('/api/payme', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -1350,56 +1314,32 @@ app.post('/api/payme', async (req, res) => {
   }
 });
 
-// ==================== PAYME MERCHANT API METHODS ====================
-
-function createPaymeError(code, message, data = null) {
-  const messages = {
-    '-31001': { ru: 'Недостаточно привилегий', uz: 'Huquqlar yetarli emas', en: 'Insufficient privileges' },
-    '-32600': { ru: 'Неверный JSON-RPC объект', uz: 'Noto\'g\'ri JSON-RPC obyekt', en: 'Invalid JSON-RPC object' },
-    '-32601': { ru: 'Метод не найден', uz: 'Metod topilmadi', en: 'Method not found' },
-    '-31050': { ru: 'Заказ не найден', uz: 'Buyurtma topilmadi', en: 'Order not found' },
-    '-31001': { ru: 'Неверная сумма', uz: 'Noto\'g\'ri summa', en: 'Invalid amount' },
-    '-31052': { ru: 'Заказ просрочен', uz: 'Buyurtma muddati o\'tgan', en: 'Order expired' },
-    '-31053': { ru: 'Заказ уже оплачен', uz: 'Buyurtma allaqachon to\'langan', en: 'Order already paid' },
-    '-31060': { ru: 'Невозможно отменить транзакцию', uz: 'Tranzaksiyani bekor qilib bo\'lmaydi', en: 'Cannot cancel transaction' },
-    '-31099': { ru: 'Транзакция не найдена', uz: 'Tranzaksiya topilmadi', en: 'Transaction not found' },
-  };
-
-  return {
-    error: {
-      code,
-      message: messages[code.toString()] || { ru: message, uz: message, en: message },
-      data
-    }
-  };
-}
-
 async function checkPerformTransaction(params) {
   const { account, amount } = params;
   const orderId = account?.order_id;
 
   if (!orderId) {
-    return createPaymeError(-31050, 'Order ID not provided', 'order_id');
+    return createPaymeError(-31050, 'Order ID not provided');
   }
 
   const orders = readJSON(ORDERS_FILE, []);
   const order = orders.find(o => o.id === orderId);
 
   if (!order) {
-    return createPaymeError(-31050, 'Order not found', 'order_id');
+    return createPaymeError(-31050, 'Order not found');
   }
 
   const expectedAmount = order.total * 100;
   if (amount !== expectedAmount) {
-    return createPaymeError(-31001, 'Invalid amount', 'amount');
+    return createPaymeError(-31001, 'Invalid amount');
   }
 
   if (new Date() > new Date(order.expire_at)) {
-    return createPaymeError(-31052, 'Order expired', 'order_id');
+    return createPaymeError(-31052, 'Order expired');
   }
 
   if (order.payment_status === 'paid') {
-    return createPaymeError(-31053, 'Order already paid', 'order_id');
+    return createPaymeError(-31053, 'Order already paid');
   }
 
   return { result: { allow: true } };
@@ -1439,7 +1379,7 @@ async function createTransaction(params) {
   );
 
   if (existingTx) {
-    return createPaymeError(-31050, 'Another transaction in progress for this order');
+    return createPaymeError(-31050, 'Another transaction in progress');
   }
 
   transaction = {
@@ -1514,7 +1454,6 @@ async function performTransaction(params) {
     orders[orderIndex].paid_at = new Date().toISOString();
     writeJSON(ORDERS_FILE, orders);
 
-    // Отправляем уведомление в Telegram С КНОПКАМИ
     const order = orders[orderIndex];
 
     let itemsList = order.items.map(item =>
@@ -1664,8 +1603,7 @@ async function getStatement(params) {
   return { result: { transactions: result } };
 }
 
-// ==================== CALLBACK URL ====================
-
+// Callback URL
 app.get('/api/payment/callback', (req, res) => {
   const { order_id } = req.query;
 
