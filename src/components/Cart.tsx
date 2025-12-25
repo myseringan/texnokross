@@ -77,25 +77,6 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
       }));
     }
   }, [user, isAuthenticated]);
-
-  // Проверяем URL параметры на статус оплаты
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentStatus = urlParams.get('payment_status');
-    const orderIdParam = urlParams.get('order_id');
-    
-    if (paymentStatus && orderIdParam) {
-      setOrderId(orderIdParam);
-      if (paymentStatus === 'paid') {
-        setView('success');
-        onClearCart();
-      } else if (paymentStatus === 'cancelled' || paymentStatus === 'failed') {
-        setView('error');
-      }
-      // Очищаем URL параметры
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
   
   if (!isOpen) return null;
 
@@ -182,8 +163,12 @@ export function Cart({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIte
 
       setOrderId(orderResponse.order.id);
       setView('processing');
+      
+      // Очищаем корзину сразу после создания заказа
+      onClearCart();
 
-      const returnUrl = `${window.location.origin}/?payment_status=paid&order_id=${orderResponse.order.id}`;
+      // ИСПРАВЛЕНО: Редирект на страницу отслеживания заказа вместо главной
+      const returnUrl = `${window.location.origin}/order?order_id=${orderResponse.order.id}&payment_status=paid`;
       const paymentResponse = await api.createPayment(orderResponse.order.id, grandTotal, returnUrl);
       
       if (paymentResponse.payment_url) {
