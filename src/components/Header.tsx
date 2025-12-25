@@ -1,4 +1,4 @@
-import { ShoppingCart, ArrowRight, Globe, Menu, X, Sun, Moon, User, LogOut, Home } from 'lucide-react';
+import { ShoppingCart, ArrowRight, Globe, Menu, X, Sun, Moon, User, LogOut, Home, Package } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -94,6 +94,18 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
                     </span>
                   </Link>
                 )}
+                {/* Profile Link */}
+                <Link
+                  to="/profile"
+                  className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl p-2.5 lg:p-3 transition-all duration-300 shadow-xl hover:scale-105 ${
+                    isDark 
+                      ? 'bg-white/10 hover:bg-white/20 border-white/20' 
+                      : 'bg-blue-100/50 hover:bg-blue-200/50 border-blue-200'
+                  }`}
+                  title={language === 'ru' ? 'Мой профиль' : 'Mening profilim'}
+                >
+                  <User className={`w-4 h-4 lg:w-5 lg:h-5 ${isDark ? 'text-white' : 'text-blue-700'}`} strokeWidth={2} />
+                </Link>
                 <button
                   onClick={logout}
                   className={`relative backdrop-blur-xl border rounded-xl lg:rounded-2xl p-2.5 lg:p-3 transition-all duration-300 shadow-xl hover:scale-105 ${
@@ -313,6 +325,19 @@ export function Header({ cartItemCount, onCartClick }: HeaderProps) {
                     <User className="w-5 h-5" strokeWidth={2} />
                   </Link>
                 )}
+                {/* Profile Link Mobile */}
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center justify-between w-full backdrop-blur-xl border rounded-xl px-4 py-3 font-medium ${
+                    isDark 
+                      ? 'bg-green-500/20 border-green-400/30 text-green-300 active:bg-green-500/30' 
+                      : 'bg-green-100 border-green-300 text-green-700 active:bg-green-200'
+                  }`}
+                >
+                  <span>{language === 'ru' ? 'Мои заказы' : 'Mening buyurtmalarim'}</span>
+                  <Package className="w-5 h-5" strokeWidth={2} />
+                </Link>
                 <button
                   onClick={() => { logout(); setMobileMenuOpen(false); }}
                   className={`flex items-center justify-between w-full backdrop-blur-xl border rounded-xl px-4 py-3 font-medium ${
