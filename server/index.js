@@ -832,22 +832,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     }
   }
 
-  // Также отправляем код в Telegram (как резерв)
-  if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-    const message = `🔐 Parolni tiklash kodi\n\n📞 Telefon: ${normalizedPhone}\n🔑 Kod: ${code}\n⏰ Amal qilish: 10 daqiqa`;
-    try {
-      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: TELEGRAM_CHAT_ID,
-          text: message
-        })
-      });
-    } catch (err) {
-      console.error('Telegram send error:', err);
-    }
-  }
 
   console.log(`🔐 Password reset code for ${normalizedPhone}: ${code}`);
 
