@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-const API_URL = (import.meta.env.VITE_API_URL || '') + '/api';
-
 interface User {
   id: string;
   phone: string;
@@ -27,12 +25,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_STORAGE_KEY = 'texnokross_auth';
 
+function getApiUrl() {
+  return (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api';
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Проверяем сохранённую сессию
     const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
     if (savedAuth) {
       try {
@@ -47,18 +48,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (phone: string, password: string, name?: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch(`${API_URL}/auth/register`, {
+      const response = await fetch(`${getApiUrl()}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password, name })
       });
-      
       const data = await response.json();
-      
       if (!response.ok) {
         return { success: false, error: data.error || 'Ro\'yxatdan o\'tishda xatolik' };
       }
-      
       setUser(data.user);
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
       return { success: true };
@@ -70,22 +68,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (phone: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${getApiUrl()}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password })
       });
-      
       const data = await response.json();
-      
       if (!response.ok) {
-        // Если пользователь не найден, пробуем зарегистрировать
         if (response.status === 404) {
           return await register(phone, password);
         }
         return { success: false, error: data.error || 'Kirishda xatolik' };
       }
-      
       setUser(data.user);
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
       return { success: true };
@@ -102,18 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const forgotPassword = async (phone: string): Promise<{ success: boolean; error?: string; botLink?: string }> => {
     try {
-      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+      const response = await fetch(`${getApiUrl()}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone })
       });
-      
       const data = await response.json();
-      
       if (!response.ok) {
         return { success: false, error: data.error || 'Xatolik yuz berdi' };
       }
-      
       return { success: true, botLink: data.bot_link };
     } catch (err) {
       console.error('Forgot password error:', err);
@@ -123,18 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (phone: string, code: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch(`${API_URL}/auth/reset-password`, {
+      const response = await fetch(`${getApiUrl()}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, code, newPassword })
       });
-      
       const data = await response.json();
-      
       if (!response.ok) {
         return { success: false, error: data.error || 'Xatolik yuz berdi' };
       }
-      
       return { success: true };
     } catch (err) {
       console.error('Reset password error:', err);
@@ -146,24 +134,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) {
       return { success: false, error: 'Foydalanuvchi topilmadi' };
     }
-    
     try {
-      const response = await fetch(`${API_URL}/auth/change-password`, {
+      const response = await fetch(`${getApiUrl()}/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          phone: user.phone, 
-          oldPassword, 
-          newPassword 
-        })
+        body: JSON.stringify({ phone: user.phone, oldPassword, newPassword })
       });
-      
       const data = await response.json();
-      
       if (!response.ok) {
         return { success: false, error: data.error || 'Xatolik yuz berdi' };
       }
-      
       return { success: true };
     } catch (err) {
       console.error('Change password error:', err);
