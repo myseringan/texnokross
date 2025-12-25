@@ -44,7 +44,7 @@ interface Order {
   delivered_at?: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = (import.meta.env.VITE_API_URL || '') + '/api';
 
 export function OrderTrackingPage() {
   const [searchParams] = useSearchParams();
@@ -69,7 +69,7 @@ export function OrderTrackingPage() {
 
   const fetchOrder = async (id: string) => {
     try {
-      const response = await fetch(`${API_URL}/api/orders/${id}`);
+      const response = await fetch(`${API_URL}/orders/${id}`);
       if (response.ok) {
         const data = await response.json();
         setOrder(data);

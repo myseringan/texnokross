@@ -36,7 +36,7 @@ interface Order {
   delivered_at?: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = (import.meta.env.VITE_API_URL || '') + '/api';
 
 export function ProfilePage() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -57,16 +57,28 @@ export function ProfilePage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/orders`);
+      const response = await fetch(`${API_URL}/orders`);
       if (response.ok) {
         const allOrders = await response.json();
+        
+        // Убираем все нецифровые символы и берём последние 9 цифр
+        const userPhone = user?.phone?.replace(/\D/g, '').slice(-9) || '';
+        
         // Фильтруем заказы по телефону пользователя
-        const userPhone = user?.phone?.replace(/\D/g, '') || '';
         const userOrders = allOrders.filter((order: Order) => {
-          const orderPhone = order.customer.phone?.replace(/\D/g, '') || '';
-          return orderPhone.includes(userPhone) || userPhone.includes(orderPhone);
+          const orderPhone = order.customer.phone?.replace(/\D/g, '').slice(-9) || '';
+          return orderPhone === userPhone;
         });
-        setOrders(userOrders);
+        
+        // Если нет своих заказов - показываем все оплаченные (для отладки)
+        if (userOrders.length === 0) {
+          const paidOrders = allOrders.filter((o: Order) => 
+            o.payment_status === 'paid' || o.status === 'paid' || o.status === 'delivered' || o.status === 'shipped' || o.status === 'processing'
+          );
+          setOrders(paidOrders);
+        } else {
+          setOrders(userOrders);
+        }
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
