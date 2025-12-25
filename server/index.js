@@ -31,19 +31,19 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 
 // ==================== PAYME CONFIGURATION ====================
-// ВАЖНО: Замените на свои данные из личного кабинета Payme Business
-const PAYME_MERCHANT_ID = process.env.PAYME_MERCHANT_ID || ''; // ID мерчанта
-const PAYME_SECRET_KEY = process.env.PAYME_SECRET_KEY || ''; // Секретный ключ
-const PAYME_SECRET_KEY_TEST = process.env.PAYME_SECRET_KEY_TEST || ''; // Ключ для тестов
-const PAYME_TEST_MODE = process.env.PAYME_TEST_MODE === 'true'; // Тестовый режим
+const PAYME_MERCHANT_ID = process.env.PAYME_MERCHANT_ID || '';
+const PAYME_SECRET_KEY = process.env.PAYME_SECRET_KEY || '';
+const PAYME_SECRET_KEY_TEST = process.env.PAYME_SECRET_KEY_TEST || '';
+const PAYME_TEST_MODE = process.env.PAYME_TEST_MODE === 'true';
 
-// URL для чекаута
 const PAYME_CHECKOUT_URL = PAYME_TEST_MODE 
   ? 'https://test.paycom.uz' 
   : 'https://checkout.paycom.uz';
 
-// Таймаут для заказа (12 часов в миллисекундах)
 const ORDER_TIMEOUT = 12 * 60 * 60 * 1000;
+
+// Frontend URL
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://texnokross.uz';
 
 // Дефолтные настройки
 const DEFAULT_SETTINGS = {
@@ -109,8 +109,10 @@ function writeJSON(file, data) {
   }
 }
 
-// Функция отправки в Telegram
-async function sendToTelegram(message) {
+// ==================== TELEGRAM BOT ====================
+
+// Отправка сообщения с кнопками
+async function sendTelegramWithButtons(message, orderId) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.log('Telegram not configured, skipping notification');
     return false;
@@ -118,13 +120,28 @@ async function sendToTelegram(message) {
   
   try {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '📦 Обрабатывается', callback_data: `status_processing_${orderId}` },
+          { text: '🚚 Отправлено', callback_data: `status_shipped_${orderId}` }
+        ],
+        [
+          { text: '✅ Доставлено', callback_data: `status_delivered_${orderId}` },
+          { text: '❌ Отменить', callback_data: `status_cancelled_${orderId}` }
+        ]
+      ]
+    };
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
         text: message,
-        parse_mode: 'HTML'
+        parse_mode: 'HTML',
+        reply_markup: keyboard
       })
     });
     return response.ok;
@@ -133,6 +150,163 @@ async function sendToTelegram(message) {
     return false;
   }
 }
+
+// Обновление сообщения
+async function updateTelegramMessage(chatId, messageId, newText, orderId, showButtons = true) {
+  if (!TELEGRAM_BOT_TOKEN) return false;
+  
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`;
+    
+    const body = {
+      chat_id: chatId,
+      message_id: messageId,
+      text: newText,
+      parse_mode: 'HTML'
+    };
+    
+    if (showButtons) {
+      body.reply_markup = {
+        inline_keyboard: [
+          [
+            { text: '📦 Обрабатывается', callback_data: `status_processing_${orderId}` },
+            { text: '🚚 Отправлено', callback_data: `status_shipped_${orderId}` }
+          ],
+          [
+            { text: '✅ Доставлено', callback_data: `status_delivered_${orderId}` },
+            { text: '❌ Отменить', callback_data: `status_cancelled_${orderId}` }
+          ]
+        ]
+      };
+    }
+    
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return true;
+  } catch (err) {
+    console.error('Telegram update error:', err);
+    return false;
+  }
+}
+
+// Ответ на callback
+async function answerCallback(callbackQueryId, text) {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text: text,
+        show_alert: false
+      })
+    });
+  } catch (err) {
+    console.error('Answer callback error:', err);
+  }
+}
+
+// Webhook для Telegram бота
+app.post('/api/telegram/webhook', async (req, res) => {
+  try {
+    const update = req.body;
+    
+    // Обработка callback от кнопок
+    if (update.callback_query) {
+      const callbackData = update.callback_query.data;
+      const chatId = update.callback_query.message.chat.id;
+      const messageId = update.callback_query.message.message_id;
+      const callbackQueryId = update.callback_query.id;
+      
+      // Парсим callback: status_STATUS_ORDERID
+      const match = callbackData.match(/^status_(\w+)_(.+)$/);
+      
+      if (match) {
+        const newStatus = match[1];
+        const orderId = match[2];
+        
+        // Обновляем статус заказа
+        const orders = readJSON(ORDERS_FILE, []);
+        const orderIndex = orders.findIndex(o => o.id === orderId);
+        
+        if (orderIndex !== -1) {
+          const order = orders[orderIndex];
+          const oldStatus = order.status;
+          
+          // Обновляем статус
+          orders[orderIndex].status = newStatus;
+          
+          // Добавляем timestamp
+          const now = new Date().toISOString();
+          if (newStatus === 'processing') orders[orderIndex].processing_at = now;
+          if (newStatus === 'shipped') orders[orderIndex].shipped_at = now;
+          if (newStatus === 'delivered') orders[orderIndex].delivered_at = now;
+          if (newStatus === 'cancelled') orders[orderIndex].cancelled_at = now;
+          
+          writeJSON(ORDERS_FILE, orders);
+          
+          // Статусы для отображения
+          const statusLabels = {
+            'processing': '📦 Обрабатывается',
+            'shipped': '🚚 Отправлено',
+            'delivered': '✅ Доставлено',
+            'cancelled': '❌ Отменён'
+          };
+          
+          // Формируем обновлённое сообщение
+          const statusLabel = statusLabels[newStatus] || newStatus;
+          
+          // Формируем список товаров
+          let itemsList = order.items.map(item => 
+            `  • ${item.name} x${item.quantity} = ${item.price.toLocaleString()} сум`
+          ).join('\n');
+
+          const deliveryInfo = order.customer.deliveryCost === 0 
+            ? `🚚 Доставка: Бесплатная`
+            : `🚚 Доставка: ${order.customer.deliveryCost?.toLocaleString() || 0} сум`;
+          
+          const updatedMessage = `
+✅ <b>Заказ #${order.id.slice(-6)}</b>
+
+👤 Клиент: ${order.customer.name}
+📞 Телефон: ${order.customer.phone}
+🏙 Город: ${order.customer.city || 'Не указан'}
+${order.customer.address ? `📍 Адрес: ${order.customer.address}` : ''}
+${deliveryInfo}
+
+📦 <b>Товары:</b>
+${itemsList}
+
+💰 <b>Итого:</b> ${order.total.toLocaleString()} сум
+
+📊 <b>Статус:</b> ${statusLabel}
+🕐 Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
+          `.trim();
+          
+          // Обновляем сообщение
+          const showButtons = newStatus !== 'delivered' && newStatus !== 'cancelled';
+          await updateTelegramMessage(chatId, messageId, updatedMessage, orderId, showButtons);
+          
+          // Отвечаем на callback
+          await answerCallback(callbackQueryId, `Статус изменён: ${statusLabel}`);
+        } else {
+          await answerCallback(callbackQueryId, 'Заказ не найден');
+        }
+      }
+    }
+    
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Telegram webhook error:', error);
+    res.json({ ok: true });
+  }
+});
 
 // ==================== PRODUCTS ====================
 
@@ -285,6 +459,17 @@ app.get('/api/orders', (req, res) => {
   res.json(orders);
 });
 
+// Получение заказа по ID
+app.get('/api/orders/:id', (req, res) => {
+  const orders = readJSON(ORDERS_FILE, []);
+  const order = orders.find(o => o.id === req.params.id);
+  if (order) {
+    res.json(order);
+  } else {
+    res.status(404).json({ error: 'Order not found' });
+  }
+});
+
 app.post('/api/orders', async (req, res) => {
   const orders = readJSON(ORDERS_FILE, []);
   const { customer, items, total } = req.body;
@@ -294,8 +479,8 @@ app.post('/api/orders', async (req, res) => {
     customer,
     items,
     total,
-    status: 'pending', // pending, paid, cancelled, delivered
-    payment_status: 'pending', // pending, processing, paid, failed, cancelled
+    status: 'pending',
+    payment_status: 'pending',
     created_at: new Date().toISOString(),
     expire_at: new Date(Date.now() + ORDER_TIMEOUT).toISOString(),
   };
@@ -303,35 +488,7 @@ app.post('/api/orders', async (req, res) => {
   orders.unshift(newOrder);
   writeJSON(ORDERS_FILE, orders);
   
-  // Формируем сообщение для Telegram
-  let itemsList = items.map(item => 
-    `  • ${item.name} x${item.quantity} = ${item.price.toLocaleString()} сум`
-  ).join('\n');
-
-  const deliveryInfo = customer.deliveryCost === 0 
-    ? `🚚 <b>Доставка:</b> Бесплатная`
-    : `🚚 <b>Доставка:</b> ${customer.deliveryCost?.toLocaleString() || 0} сум`;
-  
-  const telegramMessage = `
-🛒 <b>Новый заказ #${newOrder.id.slice(-6)}</b>
-
-👤 <b>Клиент:</b> ${customer.name}
-📞 <b>Телефон:</b> ${customer.phone}
-🏙 <b>Город:</b> ${customer.city || 'Не указан'}
-${customer.address ? `📍 <b>Адрес:</b> ${customer.address}` : ''}
-${deliveryInfo}
-${customer.comment ? `💬 <b>Комментарий:</b> ${customer.comment}` : ''}
-
-📦 <b>Товары:</b>
-${itemsList}
-
-💰 <b>Итого:</b> ${total.toLocaleString()} сум
-💳 <b>Статус:</b> Ожидает оплаты
-
-🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
-  `.trim();
-  
-  await sendToTelegram(telegramMessage);
+  console.log(`📦 New order created: ${newOrder.id} (pending payment)`);
   
   res.json({ success: true, order: newOrder });
 });
@@ -341,6 +498,28 @@ app.put('/api/orders/:id', (req, res) => {
   const index = orders.findIndex(o => o.id === req.params.id);
   if (index !== -1) {
     orders[index] = { ...orders[index], ...req.body };
+    writeJSON(ORDERS_FILE, orders);
+    res.json(orders[index]);
+  } else {
+    res.status(404).json({ error: 'Order not found' });
+  }
+});
+
+// API для обновления статуса заказа
+app.put('/api/orders/:id/status', (req, res) => {
+  const { status } = req.body;
+  const orders = readJSON(ORDERS_FILE, []);
+  const index = orders.findIndex(o => o.id === req.params.id);
+  
+  if (index !== -1) {
+    orders[index].status = status;
+    
+    const now = new Date().toISOString();
+    if (status === 'processing') orders[index].processing_at = now;
+    if (status === 'shipped') orders[index].shipped_at = now;
+    if (status === 'delivered') orders[index].delivered_at = now;
+    if (status === 'cancelled') orders[index].cancelled_at = now;
+    
     writeJSON(ORDERS_FILE, orders);
     res.json(orders[index]);
   } else {
@@ -553,10 +732,6 @@ app.post('/api/improsoft/create-product', (req, res) => {
 
 // ==================== PAYME INTEGRATION ====================
 
-/**
- * Генерация ссылки на оплату через Payme Checkout
- * Формат: https://checkout.paycom.uz/base64(m=MERCHANT_ID;ac.order_id=ORDER_ID;a=AMOUNT;c=RETURN_URL)
- */
 app.post('/api/create-payment', async (req, res) => {
   try {
     const { order_id, amount, return_url } = req.body;
@@ -570,24 +745,18 @@ app.post('/api/create-payment', async (req, res) => {
       return res.status(500).json({ error: 'Payment system not configured' });
     }
 
-    // Сумма в тийинах (1 сум = 100 тийинов)
     const amountTiyin = Math.round(amount * 100);
     
-    // Формируем параметры для URL
     let params = `m=${PAYME_MERCHANT_ID};ac.order_id=${order_id};a=${amountTiyin}`;
     
-    // Добавляем return_url если указан
     if (return_url) {
       params += `;c=${return_url}`;
     }
     
-    // Кодируем в base64
     const encodedParams = Buffer.from(params).toString('base64');
-    
-    // Формируем URL для чекаута
     const payment_url = `${PAYME_CHECKOUT_URL}/${encodedParams}`;
     
-    console.log(`Created payment link for order ${order_id}: ${amount} UZS`);
+    console.log(`💳 Payment link created for order ${order_id}: ${amount} сум`);
     
     res.json({ 
       success: true, 
@@ -603,25 +772,18 @@ app.post('/api/create-payment', async (req, res) => {
   }
 });
 
-/**
- * Merchant API endpoint для Payme
- * Payme будет отправлять запросы сюда для проверки и выполнения транзакций
- */
 app.post('/api/payme', async (req, res) => {
   try {
-    // Проверка авторизации
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       return res.json(createPaymeError(-32504, 'Unauthorized'));
     }
     
-    // Декодируем Basic auth
     const base64Credentials = authHeader.split(' ')[1];
     const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
     const [login, password] = credentials.split(':');
     
-    // Проверяем логин и пароль
     const secretKey = PAYME_TEST_MODE ? PAYME_SECRET_KEY_TEST : PAYME_SECRET_KEY;
     
     if (login !== 'Paycom' || password !== secretKey) {
@@ -630,7 +792,7 @@ app.post('/api/payme', async (req, res) => {
     
     const { id, method, params } = req.body;
     
-    console.log(`Payme API: ${method}`, params);
+    console.log(`💳 Payme API: ${method}`, params);
     
     let result;
     
@@ -700,7 +862,6 @@ function createPaymeError(code, message, data = null) {
   };
 }
 
-// Проверка возможности выполнения транзакции
 async function checkPerformTransaction(params) {
   const { account, amount } = params;
   const orderId = account?.order_id;
@@ -716,18 +877,15 @@ async function checkPerformTransaction(params) {
     return createPaymeError(-31050, 'Order not found', 'order_id');
   }
   
-  // Проверяем сумму (amount в тийинах)
   const expectedAmount = order.total * 100;
   if (amount !== expectedAmount) {
     return createPaymeError(-31051, 'Invalid amount', 'amount');
   }
   
-  // Проверяем не просрочен ли заказ
   if (new Date() > new Date(order.expire_at)) {
     return createPaymeError(-31052, 'Order expired', 'order_id');
   }
   
-  // Проверяем не оплачен ли уже
   if (order.payment_status === 'paid') {
     return createPaymeError(-31053, 'Order already paid', 'order_id');
   }
@@ -735,12 +893,10 @@ async function checkPerformTransaction(params) {
   return { result: { allow: true } };
 }
 
-// Создание транзакции
 async function createTransaction(params) {
   const { id: paymeId, time, amount, account } = params;
   const orderId = account?.order_id;
   
-  // Сначала проверяем возможность
   const checkResult = await checkPerformTransaction(params);
   if (checkResult.error) {
     return checkResult;
@@ -748,11 +904,9 @@ async function createTransaction(params) {
   
   const transactions = readJSON(TRANSACTIONS_FILE, []);
   
-  // Проверяем существует ли уже транзакция с таким payme_id
   let transaction = transactions.find(t => t.payme_id === paymeId);
   
   if (transaction) {
-    // Если транзакция уже есть и в правильном статусе
     if (transaction.state === 1) {
       return {
         result: {
@@ -766,7 +920,6 @@ async function createTransaction(params) {
     }
   }
   
-  // Проверяем нет ли другой активной транзакции для этого заказа
   const existingTx = transactions.find(t => 
     t.order_id === orderId && 
     t.state === 1 && 
@@ -777,13 +930,12 @@ async function createTransaction(params) {
     return createPaymeError(-31050, 'Another transaction in progress for this order');
   }
   
-  // Создаём новую транзакцию
   transaction = {
     id: `tx_${Date.now()}`,
     payme_id: paymeId,
     order_id: orderId,
     amount,
-    state: 1, // Создана
+    state: 1,
     create_time: time,
     created_at: new Date().toISOString()
   };
@@ -791,7 +943,6 @@ async function createTransaction(params) {
   transactions.push(transaction);
   writeJSON(TRANSACTIONS_FILE, transactions);
   
-  // Обновляем статус заказа
   const orders = readJSON(ORDERS_FILE, []);
   const orderIndex = orders.findIndex(o => o.id === orderId);
   if (orderIndex !== -1) {
@@ -800,7 +951,7 @@ async function createTransaction(params) {
     writeJSON(ORDERS_FILE, orders);
   }
   
-  console.log(`Transaction created: ${transaction.id} for order ${orderId}`);
+  console.log(`💳 Transaction created: ${transaction.id} for order ${orderId}`);
   
   return {
     result: {
@@ -811,7 +962,6 @@ async function createTransaction(params) {
   };
 }
 
-// Выполнение (подтверждение) транзакции
 async function performTransaction(params) {
   const { id: paymeId } = params;
   
@@ -824,7 +974,6 @@ async function performTransaction(params) {
   
   const transaction = transactions[txIndex];
   
-  // Если уже выполнена
   if (transaction.state === 2) {
     return {
       result: {
@@ -835,19 +984,16 @@ async function performTransaction(params) {
     };
   }
   
-  // Проверяем что транзакция в состоянии "создана"
   if (transaction.state !== 1) {
     return createPaymeError(-31099, 'Transaction in invalid state');
   }
   
-  // Выполняем транзакцию
   const performTime = Date.now();
-  transactions[txIndex].state = 2; // Выполнена
+  transactions[txIndex].state = 2;
   transactions[txIndex].perform_time = performTime;
   transactions[txIndex].performed_at = new Date().toISOString();
   writeJSON(TRANSACTIONS_FILE, transactions);
   
-  // Обновляем статус заказа
   const orders = readJSON(ORDERS_FILE, []);
   const orderIndex = orders.findIndex(o => o.id === transaction.order_id);
   if (orderIndex !== -1) {
@@ -856,23 +1002,40 @@ async function performTransaction(params) {
     orders[orderIndex].paid_at = new Date().toISOString();
     writeJSON(ORDERS_FILE, orders);
     
-    // Отправляем уведомление в Telegram
+    // Отправляем уведомление в Telegram С КНОПКАМИ
     const order = orders[orderIndex];
+    
+    let itemsList = order.items.map(item => 
+      `  • ${item.name} x${item.quantity} = ${item.price.toLocaleString()} сум`
+    ).join('\n');
+
+    const deliveryInfo = order.customer.deliveryCost === 0 
+      ? `🚚 Доставка: Бесплатная`
+      : `🚚 Доставка: ${order.customer.deliveryCost?.toLocaleString() || 0} сум`;
+    
     const telegramMessage = `
 ✅ <b>Оплата получена!</b>
 
 🛒 Заказ: #${order.id.slice(-6)}
 👤 Клиент: ${order.customer.name}
 📞 Телефон: ${order.customer.phone}
-💰 Сумма: ${order.total.toLocaleString()} сум
+🏙 Город: ${order.customer.city || 'Не указан'}
+${order.customer.address ? `📍 Адрес: ${order.customer.address}` : ''}
+${deliveryInfo}
 
+📦 <b>Товары:</b>
+${itemsList}
+
+💰 <b>Итого:</b> ${order.total.toLocaleString()} сум
+
+📊 <b>Статус:</b> 💳 Оплачено
 🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
     `.trim();
     
-    await sendToTelegram(telegramMessage);
+    await sendTelegramWithButtons(telegramMessage, order.id);
   }
   
-  console.log(`Transaction performed: ${transaction.id}`);
+  console.log(`✅ Transaction performed: ${transaction.id}`);
   
   return {
     result: {
@@ -883,7 +1046,6 @@ async function performTransaction(params) {
   };
 }
 
-// Отмена транзакции
 async function cancelTransaction(params) {
   const { id: paymeId, reason } = params;
   
@@ -896,7 +1058,6 @@ async function cancelTransaction(params) {
   
   const transaction = transactions[txIndex];
   
-  // Если уже отменена
   if (transaction.state < 0) {
     return {
       result: {
@@ -907,12 +1068,11 @@ async function cancelTransaction(params) {
     };
   }
   
-  // Определяем новое состояние
   let newState;
   if (transaction.state === 1) {
-    newState = -1; // Отменена до выполнения
+    newState = -1;
   } else if (transaction.state === 2) {
-    newState = -2; // Отменена после выполнения
+    newState = -2;
   } else {
     return createPaymeError(-31060, 'Cannot cancel transaction');
   }
@@ -924,7 +1084,6 @@ async function cancelTransaction(params) {
   transactions[txIndex].cancelled_at = new Date().toISOString();
   writeJSON(TRANSACTIONS_FILE, transactions);
   
-  // Обновляем статус заказа
   const orders = readJSON(ORDERS_FILE, []);
   const orderIndex = orders.findIndex(o => o.id === transaction.order_id);
   if (orderIndex !== -1) {
@@ -932,33 +1091,9 @@ async function cancelTransaction(params) {
     orders[orderIndex].status = 'cancelled';
     orders[orderIndex].cancelled_at = new Date().toISOString();
     writeJSON(ORDERS_FILE, orders);
-    
-    // Отправляем уведомление в Telegram
-    const order = orders[orderIndex];
-    const reasonText = {
-      1: 'Ошибка получателя',
-      2: 'Ошибка в деталях транзакции',
-      3: 'Отменено пользователем',
-      4: 'Ошибка при выполнении',
-      5: 'Отменено покупателем'
-    };
-    
-    const telegramMessage = `
-❌ <b>Оплата отменена</b>
-
-🛒 Заказ: #${order.id.slice(-6)}
-👤 Клиент: ${order.customer.name}
-📞 Телефон: ${order.customer.phone}
-💰 Сумма: ${order.total.toLocaleString()} сум
-📝 Причина: ${reasonText[reason] || 'Не указана'}
-
-🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}
-    `.trim();
-    
-    await sendToTelegram(telegramMessage);
   }
   
-  console.log(`Transaction cancelled: ${transaction.id}, reason: ${reason}`);
+  console.log(`❌ Transaction cancelled: ${transaction.id}, reason: ${reason}`);
   
   return {
     result: {
@@ -969,7 +1104,6 @@ async function cancelTransaction(params) {
   };
 }
 
-// Проверка статуса транзакции
 async function checkTransaction(params) {
   const { id: paymeId } = params;
   
@@ -992,7 +1126,6 @@ async function checkTransaction(params) {
   };
 }
 
-// Получение списка транзакций за период
 async function getStatement(params) {
   const { from, to } = params;
   
@@ -1019,7 +1152,7 @@ async function getStatement(params) {
   return { result: { transactions: result } };
 }
 
-// ==================== CALLBACK URL для возврата после оплаты ====================
+// ==================== CALLBACK URL ====================
 
 app.get('/api/payment/callback', (req, res) => {
   const { order_id } = req.query;
@@ -1029,14 +1162,11 @@ app.get('/api/payment/callback', (req, res) => {
     const order = orders.find(o => o.id === order_id);
     
     if (order) {
-      // Редирект на страницу успеха или страницу заказа
-      // Замените URL на ваш домен
-      const successUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      return res.redirect(`${successUrl}/?payment_status=${order.payment_status}&order_id=${order_id}`);
+      return res.redirect(`${FRONTEND_URL}/order?payment_status=${order.payment_status}&order_id=${order_id}`);
     }
   }
   
-  res.redirect('/');
+  res.redirect(FRONTEND_URL);
 });
 
 // ==================== START SERVER ====================
@@ -1046,4 +1176,5 @@ app.listen(PORT, () => {
   console.log(`📁 Data stored in: ${DATA_DIR}`);
   console.log(`💳 Payme Mode: ${PAYME_TEST_MODE ? 'TEST' : 'PRODUCTION'}`);
   console.log(`💳 Payme Merchant ID: ${PAYME_MERCHANT_ID ? 'Configured' : 'NOT CONFIGURED!'}`);
+  console.log(`🤖 Telegram Bot: ${TELEGRAM_BOT_TOKEN ? 'Configured' : 'NOT CONFIGURED!'}`);
 });
